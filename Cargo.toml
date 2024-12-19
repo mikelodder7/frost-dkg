@@ -14,6 +14,14 @@ repository = "https://github.com/mikelodder7/frost-dkg"
 version = "0.1.0"
 
 [features]
+default = ["bls", "curve25519", "jubjub", "ed448", "k256", "p256", "p384"]
+bls = ["blsful", "sha2"]
+curve25519 = ["vsss-rs/curve25519", "sha2", "curve25519-dalek-ml"]
+ed448 = ["ed448-goldilocks-plus", "sha3"]
+k256 = ["dep:k256", "sha2"]
+p256 = ["dep:p256", "sha2"]
+p384 = ["dep:p384", "sha2"]
+jubjub = ["jubjub-plus", "blake2"]
 
 [dependencies]
 elliptic-curve = { version = "0.13", features = ["hash2curve"] }
@@ -24,4 +32,14 @@ serde = "1.0"
 thiserror = "2.0"
 postcard = { version = "1.1", features = ["use-std"] }
 vsss-rs = "5"
-zeroize = "1"
+
+blsful = { version = "3.0.0-pre8", optional = true }
+curve25519-dalek-ml = { version = "4.2", optional = true }
+ed448-goldilocks-plus = { version = "0.13", optional = true }
+jubjub-plus = { version = "0.10", optional = true }
+k256 = { version = "0.13", features = ["arithmetic", "hash2curve", "bits"], optional = true }
+p256 = { version = "0.13", features = ["arithmetic", "hash2curve", "bits"], optional = true }
+p384 = { version = "0.13", features = ["arithmetic", "hash2curve", "bits"], optional = true }
+sha2 = { version = "0.10", optional = true }
+sha3 = { version = "0.10", optional = true }
+blake2 = { version = "0.10", optional = true }
