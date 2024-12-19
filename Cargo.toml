@@ -1,0 +1,27 @@
+[package]
+authors = ["Michael Lodder <redmike7@gmail.com>"]
+categories = ["cryptography"]
+description = "An implementation for the Frost Distributed Key Generation protocol"
+documentation = "https://docs.rs/frost-dkg"
+edition = "2021"
+exclude = ["tests/**", "benches/**", "examples/**", ".github/**"]
+homepage = "https://crates.io/crates/frost-dkg"
+keywords = ["dkg", "key", "generation", "distributed", "frost"]
+license = "Apache-2.0 OR MIT"
+name = "frost-dkg"
+readme = "README.md"
+repository = "https://github.com/mikelodder7/frost-dkg"
+version = "0.1.0"
+
+[features]
+
+[dependencies]
+elliptic-curve = { version = "0.13", features = ["hash2curve"] }
+elliptic-curve-tools = { version = "0.1", features = ["std"] }
+merlin = "3"
+rand_core = { version = "0.6", features = ["std"] }
+serde = "1.0"
+thiserror = "2.0"
+postcard = { version = "1.1", features = ["use-std"] }
+vsss-rs = "5"
+zeroize = "1"
