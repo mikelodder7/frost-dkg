@@ -27,6 +27,7 @@ where
             round1data.add_to_transcript(&mut transcript);
             valid_participant_ids.insert(round1data.sender_ordinal, round1data.sender_id);
         }
+        self.valid_participant_ids = valid_participant_ids.clone();
         let mut transcript_hash = [0u8; 32];
         transcript.challenge_bytes(b"round 2 result", &mut transcript_hash);
         self.received_round2_data.insert(
@@ -35,7 +36,7 @@ where
                 sender_ordinal: self.ordinal,
                 sender_id: self.id,
                 sender_type: self.participant_impl.get_type(),
-                secret_share: self.secret_share,
+                secret_share: self.secret_shares[&self.ordinal],
                 transcript_hash,
             },
         );

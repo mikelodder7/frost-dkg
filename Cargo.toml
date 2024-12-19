@@ -26,6 +26,7 @@ jubjub = ["jubjub-plus", "blake2"]
 [dependencies]
 elliptic-curve = { version = "0.13", features = ["hash2curve"] }
 elliptic-curve-tools = { version = "0.1", features = ["std"] }
+hex = "0.4"
 merlin = "3"
 rand_core = { version = "0.6", features = ["std"] }
 serde = "1.0"
@@ -43,3 +44,15 @@ p384 = { version = "0.13", features = ["arithmetic", "hash2curve", "bits"], opti
 sha2 = { version = "0.10", optional = true }
 sha3 = { version = "0.10", optional = true }
 blake2 = { version = "0.10", optional = true }
+
+[dev-dependencies]
+blsful = "3.0.0-pre8"
+ed448-goldilocks-plus = "0.13"
+k256 = { version = "0.13", features = ["arithmetic"] }
+p256 = { version = "0.13", features = ["arithmetic"] }
+p384 = { version = "0.13", features = ["arithmetic"] }
+jubjub-plus = "0.10"
+rand_chacha = "0.3"
+rand_core = "0.6"
+rstest = "0.23"
+vsss-rs = { version = "5.0.0", features = ["curve25519"] }

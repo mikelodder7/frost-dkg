@@ -168,6 +168,7 @@ where
                     sender_id: data.sender_id,
                     sender_type: data.sender_type,
                     feldman_commitments: data.feldman_commitments.clone(),
+                    verifying_share: data.verifying_share,
                     signature: data.signature,
                 };
                 let mut output =
@@ -223,6 +224,8 @@ where
     pub(crate) sender_id: IdentifierPrimeField<G::Scalar>,
     /// The feldman verifier set
     pub(crate) feldman_commitments: Vec<ShareVerifierGroup<G>>,
+    /// The verifying share
+    pub(crate) verifying_share: G,
     /// The schnorr signature
     pub(crate) signature: Signature<G>,
 }
@@ -250,6 +253,9 @@ where
         deserialize = "ShareVerifierGroup<G>: Deserialize<'de>"
     ))]
     pub(crate) feldman_commitments: Vec<ShareVerifierGroup<G>>,
+    /// The verifying share
+    #[serde(with = "group")]
+    pub(crate) verifying_share: G,
     /// The schnorr signature
     #[serde(bound(
         serialize = "Signature<G>: Serialize",

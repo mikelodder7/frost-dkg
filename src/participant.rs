@@ -16,6 +16,12 @@ use vsss_rs::{
     ValueGroup, ValuePrimeField,
 };
 
+/// Secret Participant type
+pub type SecretParticipant<G> = Participant<SecretParticipantImpl<G>, G>;
+
+/// Refresh Participant type
+pub type RefreshParticipant<G> = Participant<RefreshParticipantImpl<G>, G>;
+
 /// The inner share representation
 pub type SecretShare<F> = DefaultShare<IdentifierPrimeField<F>, IdentifierPrimeField<F>>;
 
@@ -54,6 +60,8 @@ where
     pub(crate) completed: bool,
     pub(crate) secret_shares: BTreeMap<usize, SecretShare<G::Scalar>>,
     pub(crate) feldman_verifiers: Vec<ValueGroup<G>>,
+    pub(crate) original_secret: G::Scalar,
+    pub(crate) verifying_share: G,
     pub(crate) secret_share: SecretShare<G::Scalar>,
     pub(crate) message_generator: G,
     pub(crate) public_key: ValueGroup<G>,
@@ -109,6 +117,16 @@ where
     G: SumOfProducts + GroupEncoding + Default,
     G::Scalar: ScalarHash,
 {
+    /// Create a new participant to generate a new key share
+    pub fn new_secret(
+        id: IdentifierPrimeField<G::Scalar>,
+        parameters: &Parameters<G>,
+    ) -> DkgResult<Self> {
+        let rng = rand_core::OsRng;
+        let secret = SecretParticipantImpl::<G>::random_value(rng);
+        Self::initialize(id, parameters, IdentifierPrimeField(secret), None)
+    }
+
     /// Create a new participant with an existing secret.
     ///
     /// This allows the polynomial to be updated versus refreshing the shares.
@@ -119,7 +137,36 @@ where
         shares_ids: &[IdentifierPrimeField<G::Scalar>],
     ) -> DkgResult<Self> {
         let secret = *old_share.value * *Self::lagrange(old_share, shares_ids);
-        Self::initialize(new_identifier, parameters, IdentifierPrimeField(secret))
+        Self::initialize(
+            new_identifier,
+            parameters,
+            IdentifierPrimeField(secret),
+            None,
+        )
+    }
+}
+
+impl<G> Participant<RefreshParticipantImpl<G>, G>
+where
+    G: SumOfProducts + GroupEncoding + Default,
+    G::Scalar: ScalarHash,
+{
+    /// Create a new participant to refresh an existing key share if it exists.
+    ///
+    /// If the share does not exist, assumes there are other participants
+    /// that do possess a valid share of the original secret
+    pub fn new_refresh(
+        id: IdentifierPrimeField<G::Scalar>,
+        existing_share: Option<G::Scalar>,
+        parameters: &Parameters<G>,
+    ) -> DkgResult<Self> {
+        let secret = existing_share.unwrap_or_else(|| G::Scalar::random(rand_core::OsRng));
+        Self::initialize(
+            id,
+            parameters,
+            IdentifierPrimeField(secret),
+            Some(parameters.message_generator * secret),
+        )
     }
 }
 
@@ -129,17 +176,11 @@ where
     G: SumOfProducts + GroupEncoding + Default,
     G::Scalar: ScalarHash,
 {
-    /// Create a new participant to generate a new key share
-    pub fn new(id: IdentifierPrimeField<G::Scalar>, parameters: &Parameters<G>) -> DkgResult<Self> {
-        let rng = rand_core::OsRng;
-        let secret = I::random_value(rng);
-        Self::initialize(id, parameters, IdentifierPrimeField(secret))
-    }
-
     fn initialize(
         id: IdentifierPrimeField<G::Scalar>,
         parameters: &Parameters<G>,
         secret: ValuePrimeField<G::Scalar>,
+        verifying_share: Option<G>,
     ) -> DkgResult<Self> {
         let rng = rand_core::OsRng;
 
@@ -148,7 +189,7 @@ where
                 "Threshold greater than limit".to_string(),
             ));
         }
-        if parameters.threshold < 1 {
+        if parameters.threshold < 2 {
             return Err(Error::InitializationError(
                 "Threshold less than 1".to_string(),
             ));
@@ -165,17 +206,31 @@ where
             powers_of_i[i] = powers_of_i[i - 1] * *id;
         }
 
+        let participant_type = I::default().get_type();
+        let secret_to_split = match participant_type {
+            ParticipantType::Secret => secret,
+            ParticipantType::Refresh => IdentifierPrimeField(G::Scalar::ZERO),
+        };
+
         let (shares, verifiers) = vsss_rs::feldman::split_secret_with_participant_generator::<
             SecretShare<G::Scalar>,
             ShareVerifierGroup<G>,
         >(
             parameters.threshold,
             parameters.limit,
-            &secret,
+            &secret_to_split,
             Some(ValueGroup(parameters.message_generator)),
             rng,
             &parameters.participant_number_generators,
         )?;
+        let verifiers = verifiers.iter().skip(1).copied().collect::<Vec<_>>();
+
+        let verifying_share = match participant_type {
+            ParticipantType::Secret => verifiers[0].0,
+            ParticipantType::Refresh => verifying_share.ok_or(Error::InitializationError(
+                "Verifying share is required for refresh".to_string(),
+            ))?,
+        };
 
         if verifiers.iter().skip(1).any(|c| c.is_identity().into())
             || !I::check_feldman_verifier(*verifiers[0])
@@ -207,6 +262,8 @@ where
             limit: parameters.limit,
             completed: false,
             round: Round::One,
+            original_secret: secret.0,
+            verifying_share,
             secret_shares: shares
                 .iter()
                 .enumerate()
@@ -419,5 +476,155 @@ where
 
     fn check_feldman_verifier(verifier: G) -> bool {
         verifier.is_identity().into()
+    }
+}
+
+/// A trait to allow for dynamic dispatch of the participant
+pub trait AnyParticipant<G>: Send + Sync
+where
+    G: SumOfProducts + GroupEncoding + Default,
+    G::Scalar: ScalarHash,
+{
+    /// Get the ordinal index of this participant
+    fn get_ordinal(&self) -> usize;
+    /// Get the identifier associated with this participant
+    fn get_id(&self) -> IdentifierPrimeField<G::Scalar>;
+    /// Get the threshold
+    fn get_threshold(&self) -> usize;
+    /// Get the limit
+    fn get_limit(&self) -> usize;
+    /// Get the current round
+    fn get_round(&self) -> Round;
+    /// Get the secret share if completed
+    fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>>;
+    /// Get the public key if completed
+    fn get_public_key(&self) -> Option<G>;
+    /// Get the valid participant ids from the last round
+    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
+    /// Get all participant ids that started the protocol
+    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
+    /// Return the feldman verifiers
+    fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>>;
+    /// Check if the participant is completed
+    fn completed(&self) -> bool;
+    /// Receive data from another participant
+    fn receive(&mut self, data: &[u8]) -> DkgResult<()>;
+    /// Run the next round in the protocol after receiving data from other participants
+    fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>>;
+}
+
+impl<G> AnyParticipant<G> for Participant<SecretParticipantImpl<G>, G>
+where
+    G: SumOfProducts + GroupEncoding + Default,
+    G::Scalar: ScalarHash,
+{
+    fn get_ordinal(&self) -> usize {
+        self.ordinal
+    }
+
+    fn get_id(&self) -> IdentifierPrimeField<G::Scalar> {
+        self.id
+    }
+
+    fn get_threshold(&self) -> usize {
+        self.threshold
+    }
+
+    fn get_limit(&self) -> usize {
+        self.limit
+    }
+
+    fn get_round(&self) -> Round {
+        self.round
+    }
+
+    fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
+        self.get_secret_share()
+    }
+
+    fn get_public_key(&self) -> Option<G> {
+        self.get_public_key()
+    }
+
+    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        &self.valid_participant_ids
+    }
+
+    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        &self.all_participant_ids
+    }
+
+    fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
+        self.get_feldman_verifiers()
+    }
+
+    fn completed(&self) -> bool {
+        self.completed()
+    }
+
+    fn receive(&mut self, data: &[u8]) -> DkgResult<()> {
+        self.receive(data)
+    }
+
+    fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
+        self.run()
+    }
+}
+
+impl<G> AnyParticipant<G> for Participant<RefreshParticipantImpl<G>, G>
+where
+    G: SumOfProducts + GroupEncoding + Default,
+    G::Scalar: ScalarHash,
+{
+    fn get_ordinal(&self) -> usize {
+        self.ordinal
+    }
+
+    fn get_id(&self) -> IdentifierPrimeField<G::Scalar> {
+        self.id
+    }
+
+    fn get_threshold(&self) -> usize {
+        self.threshold
+    }
+
+    fn get_limit(&self) -> usize {
+        self.limit
+    }
+
+    fn get_round(&self) -> Round {
+        self.round
+    }
+
+    fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
+        self.get_secret_share()
+    }
+
+    fn get_public_key(&self) -> Option<G> {
+        self.get_public_key()
+    }
+
+    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        &self.valid_participant_ids
+    }
+
+    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        &self.all_participant_ids
+    }
+
+    fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
+        self.get_feldman_verifiers()
+    }
+
+    fn completed(&self) -> bool {
+        self.completed()
+    }
+
+    fn receive(&mut self, data: &[u8]) -> DkgResult<()> {
+        self.receive(data)
+    }
+
+    fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
+        self.run()
     }
 }

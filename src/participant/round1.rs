@@ -24,7 +24,8 @@ where
             sender_ordinal: self.ordinal,
             sender_id: self.id,
             sender_type: self.participant_impl.get_type(),
-            feldman_commitments: vec![],
+            feldman_commitments: self.feldman_verifiers.clone(),
+            verifying_share: self.verifying_share,
             signature,
         };
         self.received_round1_data
@@ -36,6 +37,7 @@ where
             sender_ordinal: self.ordinal,
             sender_id: self.id,
             feldman_commitments: self.feldman_verifiers.clone(),
+            verifying_share: self.verifying_share,
             signature,
         }))
     }
@@ -46,10 +48,15 @@ where
             &self.id,
             &self.participant_impl.get_type(),
             &self.feldman_verifiers,
+            &self.verifying_share,
             &r_i,
         );
         let challenge = G::Scalar::hash_to_scalar(&bytes);
-        let s = k + challenge * self.secret_share.value.0;
+        println!(
+            "Actual Verifying share: {}",
+            hex::encode(self.verifying_share.to_bytes().as_ref())
+        );
+        let s = k + challenge * self.original_secret;
         Signature { r: r_i, s }
     }
 
@@ -59,12 +66,13 @@ where
             &round1data.sender_id,
             &round1data.sender_type,
             &round1data.feldman_commitments,
+            &round1data.verifying_share,
             &round1data.signature.r,
         );
         let challenge = G::Scalar::hash_to_scalar(&bytes);
 
         let computed_r = self.message_generator * round1data.signature.s
-            - round1data.feldman_commitments[0].0 * challenge;
+            - round1data.verifying_share * challenge;
         if round1data.signature.r != computed_r {
             return Err(Error::RoundError(format!(
                 "Round {}: Received invalid round1 signature from ordinal: '{}', id: '{:?}'",
@@ -82,6 +90,7 @@ where
         id: &IdentifierPrimeField<G::Scalar>,
         participant_type: &ParticipantType,
         feldman_verifiers: &[ShareVerifierGroup<G>],
+        verifying_share: &G,
         r_i: &G,
     ) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(512);
@@ -98,6 +107,8 @@ where
         }
         // Add the R_i
         bytes.extend_from_slice(r_i.to_bytes().as_ref());
+        // Add the verifying share
+        bytes.extend_from_slice(verifying_share.to_bytes().as_ref());
         // Add the verifiers
         for vf in feldman_verifiers {
             bytes.extend_from_slice(vf.0.to_bytes().as_ref());
@@ -144,9 +155,11 @@ where
         let feldman_valid = match data.sender_type {
             ParticipantType::Secret => {
                 SecretParticipantImpl::check_feldman_verifier(*data.feldman_commitments[0])
+                    && data.feldman_commitments[0].0 == data.verifying_share
             }
             ParticipantType::Refresh => {
                 RefreshParticipantImpl::check_feldman_verifier(*data.feldman_commitments[0])
+                    && data.feldman_commitments[0].0 != data.verifying_share
             }
         };
         if !feldman_valid {
