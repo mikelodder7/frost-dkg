@@ -480,7 +480,7 @@ where
 }
 
 /// A trait to allow for dynamic dispatch of the participant
-pub trait AnyParticipant<G>: Send + Sync
+pub trait AnyParticipant<G>: Send + Sync + Debug
 where
     G: SumOfProducts + GroupEncoding + Default,
     G::Scalar: ScalarHash,
