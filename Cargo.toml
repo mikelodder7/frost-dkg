@@ -11,7 +11,7 @@ license = "Apache-2.0 OR MIT"
 name = "frost-dkg"
 readme = "README.md"
 repository = "https://github.com/mikelodder7/frost-dkg"
-version = "0.2.1"
+version = "0.2.2"
 
 [features]
 default = ["bls", "curve25519", "jubjub", "ed448", "k256", "p256", "p384"]
@@ -54,5 +54,5 @@ p384 = { version = "0.13", features = ["arithmetic"] }
 jubjub-plus = "0.10"
 rand_chacha = "0.3"
 rand_core = "0.6"
-rstest = "0.23"
+rstest = "0.24"
 vsss-rs = { version = "5.0.0", features = ["curve25519"] }

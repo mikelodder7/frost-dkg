@@ -52,10 +52,6 @@ where
             &r_i,
         );
         let challenge = G::Scalar::hash_to_scalar(&bytes);
-        println!(
-            "Actual Verifying share: {}",
-            hex::encode(self.verifying_share.to_bytes().as_ref())
-        );
         let s = k + challenge * self.original_secret;
         Signature { r: r_i, s }
     }
