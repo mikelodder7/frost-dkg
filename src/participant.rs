@@ -495,6 +495,8 @@ where
     fn get_limit(&self) -> usize;
     /// Get the current round
     fn get_round(&self) -> Round;
+    /// Get the original secret
+    fn get_original_secret(&self) -> G::Scalar;
     /// Get the secret share if completed
     fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>>;
     /// Get the public key if completed
@@ -505,6 +507,8 @@ where
     fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
     /// Return the feldman verifiers
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>>;
+    /// Get the verifying share
+    fn get_verifying_share(&self) -> G;
     /// Check if the participant is completed
     fn completed(&self) -> bool;
     /// Receive data from another participant
@@ -538,6 +542,10 @@ where
         self.round
     }
 
+    fn get_original_secret(&self) -> G::Scalar {
+        self.original_secret
+    }
+
     fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
         self.get_secret_share()
     }
@@ -556,6 +564,10 @@ where
 
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
         self.get_feldman_verifiers()
+    }
+
+    fn get_verifying_share(&self) -> G {
+        self.verifying_share
     }
 
     fn completed(&self) -> bool {
@@ -596,6 +608,10 @@ where
         self.round
     }
 
+    fn get_original_secret(&self) -> G::Scalar {
+        self.original_secret
+    }
+
     fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
         self.get_secret_share()
     }
@@ -614,6 +630,10 @@ where
 
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
         self.get_feldman_verifiers()
+    }
+
+    fn get_verifying_share(&self) -> G {
+        self.verifying_share
     }
 
     fn completed(&self) -> bool {
