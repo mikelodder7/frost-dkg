@@ -287,6 +287,36 @@ where
             transcript.append_message(b"feldman_commitment", commitment.to_bytes().as_ref());
         }
     }
+
+    /// Get the sender's ordinal index during the DKG
+    pub fn sender_ordinal(&self) -> usize {
+        self.sender_ordinal
+    }
+
+    /// Get the sender's ID during the DKG
+    pub fn sender_id(&self) -> IdentifierPrimeField<G::Scalar> {
+        self.sender_id
+    }
+
+    /// Get the sender's participant type during the DKG
+    pub fn sender_type(&self) -> ParticipantType {
+        self.sender_type
+    }
+
+    /// Get the feldman commitments used by the DKG
+    pub fn feldman_commitments(&self) -> &[ShareVerifierGroup<G>] {
+        &self.feldman_commitments
+    }
+
+    /// Get the signature verifying share used by the DKG
+    pub fn verifying_share(&self) -> G {
+        self.verifying_share
+    }
+
+    /// Get the schnorr signature used by the DKG
+    pub fn signature(&self) -> Signature<G> {
+        self.signature
+    }
 }
 
 /// The output generator for round 2
@@ -328,7 +358,34 @@ pub struct Round2Data<F: ScalarHash> {
         serialize = "SecretShare<F>: Serialize",
         deserialize = "SecretShare<F>: Deserialize<'de>"
     ))]
-    pub secret_share: SecretShare<F>,
+    pub(crate) secret_share: SecretShare<F>,
     /// The transcript of all messages received
-    pub transcript_hash: [u8; 32],
+    pub(crate) transcript_hash: [u8; 32],
+}
+
+impl<F: ScalarHash> Round2Data<F> {
+    /// Get the sender's ordinal index during the DKG
+    pub fn sender_ordinal(&self) -> usize {
+        self.sender_ordinal
+    }
+
+    /// Get the sender's ID during the DKG
+    pub fn sender_id(&self) -> IdentifierPrimeField<F> {
+        self.sender_id
+    }
+
+    /// Get the sender's participant type during the DKG
+    pub fn sender_type(&self) -> ParticipantType {
+        self.sender_type
+    }
+
+    /// Get the secret share used by the DKG
+    pub fn secret_share(&self) -> SecretShare<F> {
+        self.secret_share
+    }
+
+    /// Get the transcript hash used by the DKG
+    pub fn transcript_hash(&self) -> [u8; 32] {
+        self.transcript_hash
+    }
 }

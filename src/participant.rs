@@ -349,6 +349,16 @@ where
         self.feldman_verifiers.clone()
     }
 
+    /// Get the received round 1 data so far
+    pub fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+        &self.received_round1_data
+    }
+
+    /// Get the received round 2 data so far
+    pub fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+        &self.received_round2_data
+    }
+
     /// Receive data from another participant
     pub fn receive(&mut self, data: &[u8]) -> DkgResult<()> {
         let round = Round::try_from(data[0]).map_err(Error::InitializationError)?;
@@ -507,6 +517,11 @@ where
     fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
     /// Return the feldman verifiers
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>>;
+    /// Get the received round 1 data so far
+    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>>;
+
+    /// Get the received round 2 data so far
+    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>>;
     /// Get the verifying share
     fn get_verifying_share(&self) -> G;
     /// Check if the participant is completed
@@ -564,6 +579,14 @@ where
 
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
         self.get_feldman_verifiers()
+    }
+
+    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+        &self.received_round1_data
+    }
+
+    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+        &self.received_round2_data
     }
 
     fn get_verifying_share(&self) -> G {
@@ -630,6 +653,14 @@ where
 
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
         self.get_feldman_verifiers()
+    }
+
+    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+        &self.received_round1_data
+    }
+
+    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+        &self.received_round2_data
     }
 
     fn get_verifying_share(&self) -> G {

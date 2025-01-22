@@ -71,10 +71,10 @@ where
             - round1data.verifying_share * challenge;
         if round1data.signature.r != computed_r {
             return Err(Error::RoundError(format!(
-                "Round {}: Received invalid round1 signature from ordinal: '{}', id: '{:?}'",
+                "Round {}: Received invalid round 1 signature proof from ordinal: '{}', id: '{:?}'",
                 Round::One,
                 round1data.sender_ordinal,
-                round1data.sender_ordinal
+                round1data.sender_id,
             )));
         }
         Ok(())
