@@ -38,10 +38,14 @@ pub use vsss_rs;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elliptic_curve::group::GroupEncoding;
+    use elliptic_curve::{group::GroupEncoding, Field};
     use elliptic_curve_tools::SumOfProducts;
+    use rand_core::SeedableRng;
     use std::num::NonZeroUsize;
-    use vsss_rs::{IdentifierPrimeField, ReadableShareSet};
+    use vsss_rs::{
+        shamir, DefaultShare, IdentifierPrimeField, ParticipantIdGeneratorType, ReadableShareSet,
+        ValuePrimeField,
+    };
 
     #[test]
     fn works() {
@@ -77,6 +81,73 @@ mod tests {
         let expected_pk = k256::ProjectivePoint::GENERATOR * *secret;
 
         assert_eq!(participants[1].get_public_key().unwrap(), expected_pk);
+    }
+
+    #[test]
+    fn recovery() {
+        type SecretShare =
+            DefaultShare<IdentifierPrimeField<k256::Scalar>, ValuePrimeField<k256::Scalar>>;
+        const THRESHOLD: usize = 2;
+        const LIMIT: usize = 3;
+
+        let threshold = NonZeroUsize::new(THRESHOLD).unwrap();
+        let limit = NonZeroUsize::new(LIMIT).unwrap();
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(0);
+
+        let original_secret = k256::Scalar::random(&mut rng);
+        let public_key = k256::ProjectivePoint::GENERATOR * original_secret;
+
+        let original_peer_ids = (1..=LIMIT)
+            .map(|_| IdentifierPrimeField(k256::Scalar::random(&mut rng)))
+            .collect::<Vec<_>>();
+        let original_peer_id_list = ParticipantIdGeneratorType::list(&original_peer_ids);
+        let original_shares = shamir::split_secret_with_participant_generator::<SecretShare>(
+            THRESHOLD,
+            LIMIT,
+            &IdentifierPrimeField(original_secret),
+            &mut rng,
+            &[original_peer_id_list],
+        )
+        .unwrap();
+
+        let new_peer_ids = (1..=LIMIT)
+            .map(|_| IdentifierPrimeField(k256::Scalar::random(&mut rng)))
+            .collect::<Vec<_>>();
+
+        let parameters = Parameters::<k256::ProjectivePoint>::new(
+            threshold,
+            limit,
+            None,
+            Some(vec![ParticipantIdGeneratorType::list(&new_peer_ids)]),
+        );
+        let mut participants = Vec::with_capacity(LIMIT);
+        for i in 0..LIMIT {
+            let participant = SecretParticipant::<k256::ProjectivePoint>::with_secret(
+                new_peer_ids[i],
+                &original_shares[i],
+                &parameters,
+                &original_peer_ids,
+            )
+            .unwrap();
+            participants.push(participant);
+        }
+
+        for _ in [Round::One, Round::Two, Round::Three] {
+            let generators = next_round(&mut participants);
+            receive(&mut participants, generators);
+        }
+
+        let shares = participants
+            .iter()
+            .map(|p| p.get_secret_share().unwrap())
+            .collect::<Vec<_>>();
+
+        let res = shares.combine();
+        assert!(res.is_ok());
+        let secret = res.unwrap();
+
+        assert_eq!(secret.0, original_secret);
+        assert_eq!(participants[1].get_public_key().unwrap(), public_key);
     }
 
     fn next_round<G>(participants: &mut [SecretParticipant<G>]) -> Vec<RoundOutputGenerator<G>>
