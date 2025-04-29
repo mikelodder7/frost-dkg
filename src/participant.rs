@@ -245,8 +245,7 @@ where
             .position(|s| s.identifier == id)
             .ok_or_else(|| {
                 Error::InitializationError(format!(
-                    "Invalid participant id '{}'. Not in generated set of shares",
-                    id
+                    "Invalid participant id '{id}'. Not in generated set of shares"
                 ))
             })?;
 
@@ -396,26 +395,22 @@ where
             .get(&sender_ordinal)
             .ok_or_else(|| {
                 Error::RoundError(format!(
-                    "Round {}: Unknown sender ordinal, {}",
-                    round, sender_ordinal
+                    "Round {round}: Unknown sender ordinal, {sender_ordinal}"
                 ))
             })?;
         if *id != sender_id {
             return Err(Error::RoundError(format!(
-                "Round {}: Sender id mismatch, expected '{}', got '{}'",
-                round, id, sender_id
+                "Round {round}: Sender id mismatch, expected '{id}', got '{sender_id}'"
             )));
         }
         if sender_id.is_zero().into() {
             return Err(Error::RoundError(format!(
-                "Round {}: Sender id is zero",
-                round
+                "Round {round}: Sender id is zero"
             )));
         }
         if self.id.ct_eq(&sender_id).into() {
             return Err(Error::RoundError(format!(
-                "Round {}: Sender id is equal to our id",
-                round
+                "Round {round}: Sender id is equal to our id",
             )));
         }
         Ok(())
@@ -519,11 +514,12 @@ where
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>>;
     /// Get the received round 1 data so far
     fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>>;
-
     /// Get the received round 2 data so far
     fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>>;
     /// Get the verifying share
     fn get_verifying_share(&self) -> G;
+    /// Get the final transcript hash
+    fn get_final_transcript_hash(&self) -> [u8; 32];
     /// Check if the participant is completed
     fn completed(&self) -> bool;
     /// Receive data from another participant
@@ -591,6 +587,10 @@ where
 
     fn get_verifying_share(&self) -> G {
         self.verifying_share
+    }
+
+    fn get_final_transcript_hash(&self) -> [u8; 32] {
+        get_final_transcript_hash(&self.received_round1_data, &self.received_round2_data)
     }
 
     fn completed(&self) -> bool {
@@ -667,6 +667,10 @@ where
         self.verifying_share
     }
 
+    fn get_final_transcript_hash(&self) -> [u8; 32] {
+        get_final_transcript_hash(&self.received_round1_data, &self.received_round2_data)
+    }
+
     fn completed(&self) -> bool {
         self.completed()
     }
@@ -678,4 +682,24 @@ where
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         self.run()
     }
+}
+
+fn get_final_transcript_hash<G>(
+    received_round1_data: &BTreeMap<usize, Round1Data<G>>,
+    received_round2_data: &BTreeMap<usize, Round2Data<G::Scalar>>,
+) -> [u8; 32]
+where
+    G: SumOfProducts + GroupEncoding + Default,
+    G::Scalar: ScalarHash,
+{
+    let mut transcript = merlin::Transcript::new(b"Frost DKG - Final Transcript");
+    for round1data in received_round1_data.values() {
+        round1data.add_to_transcript(&mut transcript);
+    }
+    for round2data in received_round2_data.values() {
+        round2data.add_to_transcript(&mut transcript);
+    }
+    let mut transcript_hash = [0u8; 32];
+    transcript.challenge_bytes(b"final result", &mut transcript_hash);
+    transcript_hash
 }

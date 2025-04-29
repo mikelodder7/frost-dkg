@@ -1202,6 +1202,11 @@ where
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
+
+    let transcript_hash = participants[0].get_final_transcript_hash();
+    for participant in participants.iter().skip(1) {
+        assert_eq!(participant.get_final_transcript_hash(), transcript_hash);
+    }
 }
 
 fn next_round<G>(participants: &mut [Box<dyn AnyParticipant<G>>]) -> Vec<RoundOutputGenerator<G>>

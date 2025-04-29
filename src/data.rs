@@ -364,6 +364,16 @@ pub struct Round2Data<F: ScalarHash> {
 }
 
 impl<F: ScalarHash> Round2Data<F> {
+    pub(crate) fn add_to_transcript(&self, transcript: &mut merlin::Transcript) {
+        transcript.append_message(
+            b"sender_ordinal",
+            &(self.sender_ordinal as u16).to_be_bytes(),
+        );
+        transcript.append_message(b"sender_id", self.sender_id.0.to_repr().as_ref());
+        transcript.append_message(b"sender_type", &u16::from(self.sender_type).to_be_bytes());
+        transcript.append_message(b"transcript_hash", &self.transcript_hash);
+    }
+
     /// Get the sender's ordinal index during the DKG
     pub fn sender_ordinal(&self) -> usize {
         self.sender_ordinal

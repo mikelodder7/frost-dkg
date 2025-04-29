@@ -32,6 +32,8 @@ serde = "1.0"
 thiserror = "2.0"
 postcard = { version = "1.1", features = ["use-std"] }
 vsss-rs = "5.1"
+# Fix issue with cc for now, hardcord to 1.2.14
+cc = "=1.2.14"
 
 blsful = { version = "3.0.0-pre8", optional = true }
 curve25519-dalek-ml = { version = "4.3", optional = true }
