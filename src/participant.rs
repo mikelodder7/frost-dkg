@@ -185,17 +185,15 @@ where
         let rng = rand_core::OsRng;
 
         if parameters.threshold > parameters.limit {
-            return Err(Error::InitializationError(
+            return Err(Error::Initialization(
                 "Threshold greater than limit".to_string(),
             ));
         }
         if parameters.threshold < 2 {
-            return Err(Error::InitializationError(
-                "Threshold less than 1".to_string(),
-            ));
+            return Err(Error::Initialization("Threshold less than 1".to_string()));
         }
         if parameters.message_generator.is_identity().into() {
-            return Err(Error::InitializationError(
+            return Err(Error::Initialization(
                 "Invalid message generator".to_string(),
             ));
         }
@@ -227,7 +225,7 @@ where
 
         let verifying_share = match participant_type {
             ParticipantType::Secret => verifiers[0].0,
-            ParticipantType::Refresh => verifying_share.ok_or(Error::InitializationError(
+            ParticipantType::Refresh => verifying_share.ok_or(Error::Initialization(
                 "Verifying share is required for refresh".to_string(),
             ))?,
         };
@@ -235,7 +233,7 @@ where
         if verifiers.iter().skip(1).any(|c| c.is_identity().into())
             || !I::check_feldman_verifier(*verifiers[0])
         {
-            return Err(Error::InitializationError(
+            return Err(Error::Initialization(
                 "Invalid feldman verifier".to_string(),
             ));
         }
@@ -244,7 +242,7 @@ where
             .iter()
             .position(|s| s.identifier == id)
             .ok_or_else(|| {
-                Error::InitializationError(format!(
+                Error::Initialization(format!(
                     "Invalid participant id '{id}'. Not in generated set of shares"
                 ))
             })?;
@@ -360,7 +358,7 @@ where
 
     /// Receive data from another participant
     pub fn receive(&mut self, data: &[u8]) -> DkgResult<()> {
-        let round = Round::try_from(data[0]).map_err(Error::InitializationError)?;
+        let round = Round::try_from(data[0]).map_err(Error::Initialization)?;
         match round {
             Round::One => {
                 let round1_payload = postcard::from_bytes::<Round1Data<G>>(&data[1..])?;
@@ -370,7 +368,7 @@ where
                 let round2_payload = postcard::from_bytes::<Round2Data<G::Scalar>>(&data[1..])?;
                 self.receive_round2data(round2_payload)
             }
-            _ => Err(Error::RoundError("Protocol is complete".to_string())),
+            _ => Err(Error::Round("Protocol is complete".to_string())),
         }
     }
 
@@ -380,7 +378,7 @@ where
             Round::One => self.round1(),
             Round::Two => self.round2(),
             Round::Three => self.round3(),
-            Round::Four => Err(Error::RoundError("Protocol is complete".to_string())),
+            Round::Four => Err(Error::Round("Protocol is complete".to_string())),
         }
     }
 
@@ -394,22 +392,20 @@ where
             .all_participant_ids
             .get(&sender_ordinal)
             .ok_or_else(|| {
-                Error::RoundError(format!(
+                Error::Round(format!(
                     "Round {round}: Unknown sender ordinal, {sender_ordinal}"
                 ))
             })?;
         if *id != sender_id {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {round}: Sender id mismatch, expected '{id}', got '{sender_id}'"
             )));
         }
         if sender_id.is_zero().into() {
-            return Err(Error::RoundError(format!(
-                "Round {round}: Sender id is zero"
-            )));
+            return Err(Error::Round(format!("Round {round}: Sender id is zero")));
         }
         if self.id.ct_eq(&sender_id).into() {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {round}: Sender id is equal to our id",
             )));
         }

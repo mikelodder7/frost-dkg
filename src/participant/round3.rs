@@ -19,7 +19,7 @@ where
 
     pub(crate) fn round3(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round3_ready() {
-            return Err(Error::RoundError(format!("Round 3 is not ready, haven't received enough data from other participants. Need {} more", self.threshold - self.received_round2_data.len())));
+            return Err(Error::Round(format!("Round 3 is not ready, haven't received enough data from other participants. Need {} more", self.threshold - self.received_round2_data.len())));
         }
 
         let mut secret_share = SecretShare::<G::Scalar>::with_identifier_and_value(
@@ -41,13 +41,13 @@ where
 
         let public_key_identity = bool::from(public_key.is_identity());
         if all_refresh && !public_key_identity || !all_refresh && public_key_identity {
-            return Err(Error::RoundError(
+            return Err(Error::Round(
                 "Round 3: The resulting public key is invalid".to_string(),
             ));
         }
 
         if secret_share.value == og_secret.value {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {}: The resulting secret key share is invalid",
                 Round::Three
             )));

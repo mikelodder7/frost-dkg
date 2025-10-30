@@ -18,7 +18,7 @@ where
 
     pub(crate) fn round2(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round2_ready() {
-            return Err(Error::RoundError(format!("Round 2 is not ready, haven't received enough data from other participants. Need {} more", self.threshold - self.received_round1_data.len())));
+            return Err(Error::Round(format!("Round 2 is not ready, haven't received enough data from other participants. Need {} more", self.threshold - self.received_round1_data.len())));
         }
 
         let mut valid_participant_ids = BTreeMap::new();
@@ -54,7 +54,7 @@ where
 
     pub(crate) fn receive_round2data(&mut self, data: Round2Data<G::Scalar>) -> DkgResult<()> {
         if self.round > Round::Three {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {}: Invalid round payload received",
                 Round::Two
             )));
@@ -64,13 +64,13 @@ where
             .valid_participant_ids
             .contains_key(&data.sender_ordinal)
         {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {}: Not a valid participant",
                 Round::Two
             )));
         }
         if self.received_round2_data.contains_key(&data.sender_ordinal) {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {}: Sender has already sent data",
                 Round::Two
             )));
@@ -79,13 +79,13 @@ where
             .received_round2_data
             .get(&self.ordinal)
             .ok_or_else(|| {
-                Error::RoundError(format!(
+                Error::Round(format!(
                     "Round {}: Self doesn't have round 2 data",
                     Round::Two
                 ))
             })?;
         if data.transcript_hash != self_data.transcript_hash {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {}: Transcript hash does not match",
                 Round::Two
             )));
@@ -95,7 +95,7 @@ where
             .received_round1_data
             .get(&data.sender_ordinal)
             .ok_or_else(|| {
-                Error::RoundError(format!(
+                Error::Round(format!(
                     "Round {}: Sender has not sent round 1 data",
                     Round::Two
                 ))
@@ -111,7 +111,7 @@ where
         let rhs = <G as SumOfProducts>::sum_of_products(&input);
         let lhs = self.message_generator * data.secret_share.value.0;
         if !bool::from((lhs - rhs).is_identity()) {
-            return Err(Error::RoundError(format!(
+            return Err(Error::Round(format!(
                 "Round {}: The share does not verify with the given commitments",
                 Round::Three
             )));

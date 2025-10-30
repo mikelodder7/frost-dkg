@@ -5,27 +5,30 @@ use thiserror::Error;
 pub enum Error {
     /// Error during formatting.
     #[error("fmt error: {0}")]
-    FmtError(#[from] std::fmt::Error),
+    Fmt(#[from] std::fmt::Error),
     /// Error during I/O operations.
     #[error("io error: {0}")]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
     /// Error during VSSS operations.
     #[error("vsss error: {0}")]
-    VsssError(vsss_rs::Error),
+    Vsss(vsss_rs::Error),
     /// Error during postcard serialization/deserialization.
     #[error("Postcard error: {0}")]
-    PostcardError(#[from] postcard::Error),
+    Postcard(#[from] postcard::Error),
     /// Error during participant initialization.
     #[error("error during participant initialization: {0}")]
-    InitializationError(String),
+    Initialization(String),
     /// Error during a round of the DKG protocol.
     #[error("round error: {0}")]
-    RoundError(String),
+    Round(String),
+    /// Publicly Verifiable Secret Sharing Verification Error
+    #[error("publicly verifiable secret sharing error: {0}")]
+    Pvss(String),
 }
 
 impl From<vsss_rs::Error> for Error {
     fn from(e: vsss_rs::Error) -> Self {
-        Error::VsssError(e)
+        Error::Vsss(e)
     }
 }
 

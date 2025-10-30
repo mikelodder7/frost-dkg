@@ -819,6 +819,21 @@ where
         G::generator() * *secret
     );
 
+    // publicly verify secret sharing DKG result
+    for participant in participants.iter() {
+        let round1_data: Vec<Round1Data<G>> = participant
+            .get_received_round1_data()
+            .values()
+            .cloned()
+            .collect();
+        assert!(publicly_verify_dkg_results(
+            &round1_data,
+            &parameters,
+            participant.get_public_key().unwrap(),
+        )
+        .is_ok());
+    }
+
     (participants, *secret)
 }
 

@@ -6,6 +6,9 @@ The Frost Distributed Key Generation Algorithm as described [here](https://eprin
 This protocol is a variant of [PedersenVSS](https://link.springer.com/content/pdf/10.1007%2F3-540-46766-1_9.pdf)
 that also requires participants to prove their secret with a schnorr proof to mitigate rogue-key attacks.
 
+This library also provides the ability to publicly verify the DKG results for correctness using solely the broadcast information
+from round 1 and the DKG parameters.
+
 # Security Notes
 The implementation contained in this crate has never been independently audited!
 

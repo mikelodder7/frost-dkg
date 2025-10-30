@@ -422,7 +422,7 @@ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "frost-dkg"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "blake2",
  "blsful",
@@ -431,6 +431,7 @@ dependencies = [
  "ed448-goldilocks-plus",
  "elliptic-curve",
  "elliptic-curve-tools",
+ "hex",
  "jubjub-plus",
  "k256",
  "merlin",
