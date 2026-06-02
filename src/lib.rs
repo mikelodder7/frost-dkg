@@ -269,6 +269,7 @@ mod tests {
     use elliptic_curve::{Field, group::GroupEncoding, subtle::ConditionallySelectable};
     use elliptic_curve_tools::SumOfProducts;
     use rand_core::SeedableRng;
+    use serde::{Deserialize, Serialize};
     use std::num::NonZeroUsize;
     use vsss_rs::{
         DefaultShare, IdentifierPrimeField, ParticipantIdGenerator, ReadableShareSet,
@@ -535,6 +536,123 @@ mod tests {
                 .expect("participant has public key"),
             public_key
         );
+    }
+
+    #[test]
+    fn secret_participants_resume_from_checkpoints_between_rounds() {
+        let parameters = test_parameters();
+        let mut participants = (1u64..=3)
+            .map(|id| {
+                SecretParticipant::<k256::ProjectivePoint>::new_secret(
+                    IdentifierPrimeField(k256::Scalar::from(id)),
+                    &parameters,
+                )
+                .expect("create secret participant")
+            })
+            .collect::<Vec<_>>();
+
+        run_with_checkpoints(&mut participants);
+
+        let public_key = participants[0]
+            .public_key()
+            .expect("participant has public key");
+        assert!(
+            participants
+                .iter()
+                .all(|participant| participant.public_key() == Some(public_key))
+        );
+    }
+
+    #[test]
+    fn refresh_participants_resume_from_checkpoints_between_rounds() {
+        let parameters = test_parameters();
+        let mut initial_participants = (1u64..=3)
+            .map(|id| {
+                SecretParticipant::<k256::ProjectivePoint>::new_secret(
+                    IdentifierPrimeField(k256::Scalar::from(id)),
+                    &parameters,
+                )
+                .expect("create secret participant")
+            })
+            .collect::<Vec<_>>();
+        run_with_checkpoints(&mut initial_participants);
+
+        let mut participants = initial_participants
+            .iter()
+            .map(|participant| {
+                RefreshParticipant::<k256::ProjectivePoint>::new_refresh(
+                    participant.id(),
+                    Some(
+                        &participant
+                            .secret_share()
+                            .expect("participant has a secret share"),
+                    ),
+                    &parameters,
+                )
+                .expect("create refresh participant")
+            })
+            .collect::<Vec<_>>();
+
+        run_with_checkpoints(&mut participants);
+
+        let refreshed_shares = participants
+            .iter()
+            .map(|participant| {
+                participant
+                    .secret_share()
+                    .expect("participant has a refreshed secret share")
+            })
+            .collect::<Vec<_>>();
+        let refreshed_secret = refreshed_shares
+            .combine()
+            .expect("combine refreshed shares");
+        assert_eq!(refreshed_secret.0.is_zero().unwrap_u8(), 1);
+        assert!(participants.iter().all(|participant| {
+            participant
+                .public_key()
+                .is_some_and(|public_key| bool::from(public_key.is_identity()))
+        }));
+    }
+
+    fn test_parameters() -> Parameters<'static, k256::ProjectivePoint> {
+        Parameters::new(
+            NonZeroUsize::new(2).expect("threshold is non-zero"),
+            NonZeroUsize::new(3).expect("limit is non-zero"),
+        )
+        .expect("valid parameters")
+    }
+
+    fn run_with_checkpoints<I>(participants: &mut [Participant<I, k256::ProjectivePoint>])
+    where
+        I: ParticipantImpl<k256::ProjectivePoint> + Default + Serialize + for<'de> Deserialize<'de>,
+    {
+        for _ in [Round::One, Round::Two, Round::Three] {
+            checkpoint_participants(participants);
+
+            let round_generators = participants
+                .iter_mut()
+                .map(|participant| participant.run().expect("run participant round"))
+                .collect::<Vec<_>>();
+            for round_generator in round_generators {
+                for output in round_generator.iter().expect("serialize round output") {
+                    participants[output.dst_ordinal]
+                        .receive(output.data.as_bytes())
+                        .expect("receive round output");
+                }
+            }
+
+            checkpoint_participants(participants);
+        }
+    }
+
+    fn checkpoint_participants<I>(participants: &mut [Participant<I, k256::ProjectivePoint>])
+    where
+        I: ParticipantImpl<k256::ProjectivePoint> + Default + Serialize + for<'de> Deserialize<'de>,
+    {
+        for participant in participants {
+            let encoded = postcard::to_stdvec(&*participant).expect("serialize participant state");
+            *participant = postcard::from_bytes(&encoded).expect("deserialize participant state");
+        }
     }
 
     fn next_round<G>(participants: &mut [SecretParticipant<G>]) -> Vec<RoundOutputGenerator<G>>
