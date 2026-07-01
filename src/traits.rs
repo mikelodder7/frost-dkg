@@ -1,11 +1,5 @@
-#[cfg(feature = "bls")]
-mod tbls;
-#[cfg(feature = "curve25519")]
-mod ted25519;
 #[cfg(feature = "ed448")]
 mod ted448;
-#[cfg(feature = "jubjub")]
-mod tjubjub;
 #[cfg(feature = "k256")]
 mod tk256;
 #[cfg(feature = "p256")]

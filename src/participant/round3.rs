@@ -2,15 +2,16 @@ use crate::{
     DkgResult, Error, Participant, ParticipantImpl, ParticipantType, Round, RoundOutputGenerator,
     ScalarHash, SecretShare,
 };
-use elliptic_curve::group::GroupEncoding;
 use elliptic_curve::Field;
+use elliptic_curve::group::GroupEncoding;
+use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve_tools::SumOfProducts;
 use vsss_rs::{IdentifierPrimeField, Share, ValueGroup};
 
 impl<I, G> Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     pub(crate) fn round3_ready(&self) -> bool {
@@ -19,7 +20,10 @@ where
 
     pub(crate) fn round3(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round3_ready() {
-            return Err(Error::Round(format!("Round 3 is not ready, haven't received enough data from other participants. Need {} more", self.threshold - self.received_round2_data.len())));
+            return Err(Error::Round(format!(
+                "Round 3 is not ready, haven't received enough data from other participants. Need {} more",
+                self.threshold - self.received_round2_data.len()
+            )));
         }
 
         let mut secret_share = SecretShare::<G::Scalar>::with_identifier_and_value(

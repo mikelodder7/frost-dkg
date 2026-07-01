@@ -35,7 +35,11 @@ pub use elliptic_curve_tools;
 pub use rand_core;
 pub use vsss_rs;
 
-use elliptic_curve::{group::GroupEncoding, subtle::Choice, Field, PrimeField};
+use elliptic_curve::{
+    Field, PrimeField,
+    group::GroupEncoding,
+    subtle::{Choice, ConditionallySelectable},
+};
 use elliptic_curve_tools::SumOfProducts;
 use std::collections::BTreeMap;
 use vsss_rs::{IdentifierPrimeField, ShareVerifierGroup};
@@ -48,12 +52,12 @@ pub fn publicly_verify_dkg_results<G>(
     public_key: G,
 ) -> DkgResult<()>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     // This is essentially performing the same checks as round1::Participant::receive_round1data
     // but also checks that the computed public matches from the commitments
-    let rng = rand_core::OsRng;
+    let rng = rand::rng();
     let dummy_shares =
         vsss_rs::shamir::split_secret_with_participant_generator::<SecretShare<G::Scalar>>(
             parameters.threshold,
@@ -91,14 +95,22 @@ where
             )));
         }
         if round1_data.feldman_commitments.len() != parameters.threshold {
-            return Err(Error::Pvss(format!("Data at {} has commitments that do not match the expected threshold. Expected {}, found {}", i + 1, parameters.threshold, round1_data.feldman_commitments.len())));
+            return Err(Error::Pvss(format!(
+                "Data at {} has commitments that do not match the expected threshold. Expected {}, found {}",
+                i + 1,
+                parameters.threshold,
+                round1_data.feldman_commitments.len()
+            )));
         }
         if round1_data.feldman_commitments[1..]
             .iter()
             .fold(Choice::from(0u8), |acc, c| acc | c.is_identity())
             .into()
         {
-            return Err(Error::Pvss(format!("Data at {} has an feldman commitment that are the identity element which is not allowed", i + 1)));
+            return Err(Error::Pvss(format!(
+                "Data at {} has an feldman commitment that are the identity element which is not allowed",
+                i + 1
+            )));
         }
 
         let feldman_valid = match round1_data.sender_type {
@@ -169,7 +181,7 @@ pub(crate) fn verify_signature<G>(
     signature: &Signature<G>,
 ) -> DkgResult<()>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let bytes = bytes_for_schnorr(
@@ -212,7 +224,7 @@ pub(crate) fn bytes_for_schnorr<G>(
     all_participant_ids: &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
 ) -> Vec<u8>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let mut bytes = Vec::with_capacity(512);
@@ -241,13 +253,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elliptic_curve::{group::GroupEncoding, Field};
+    use elliptic_curve::{Field, group::GroupEncoding, subtle::ConditionallySelectable};
     use elliptic_curve_tools::SumOfProducts;
     use rand_core::SeedableRng;
     use std::num::NonZeroUsize;
     use vsss_rs::{
-        shamir, DefaultShare, IdentifierPrimeField, ParticipantIdGeneratorType, ReadableShareSet,
-        ValuePrimeField,
+        DefaultShare, IdentifierPrimeField, ParticipantIdGeneratorType, ReadableShareSet,
+        ValuePrimeField, shamir,
     };
 
     #[test]
@@ -255,15 +267,16 @@ mod tests {
         const THRESHOLD: usize = 2;
         const LIMIT: usize = 3;
 
-        let threshold = NonZeroUsize::new(THRESHOLD).unwrap();
-        let limit = NonZeroUsize::new(LIMIT).unwrap();
+        let threshold = NonZeroUsize::new(THRESHOLD).expect("threshold is non-zero");
+        let limit = NonZeroUsize::new(LIMIT).expect("limit is non-zero");
 
         let parameters = Parameters::<k256::ProjectivePoint>::new(threshold, limit, None, None);
 
         let mut participants = (1..=3)
             .map(|id| {
                 let id = IdentifierPrimeField(k256::Scalar::from(id as u64));
-                SecretParticipant::<k256::ProjectivePoint>::new_secret(id, &parameters).unwrap()
+                SecretParticipant::<k256::ProjectivePoint>::new_secret(id, &parameters)
+                    .expect("create secret participant")
             })
             .collect::<Vec<_>>();
 
@@ -274,16 +287,24 @@ mod tests {
 
         let shares = participants
             .iter()
-            .map(|p| p.get_secret_share().unwrap())
+            .map(|p| {
+                p.get_secret_share()
+                    .expect("participant has a secret share")
+            })
             .collect::<Vec<_>>();
 
         let res = shares.combine();
         assert!(res.is_ok());
-        let secret = res.unwrap();
+        let secret = res.expect("combine shares");
 
         let expected_pk = k256::ProjectivePoint::GENERATOR * *secret;
 
-        assert_eq!(participants[1].get_public_key().unwrap(), expected_pk);
+        assert_eq!(
+            participants[1]
+                .get_public_key()
+                .expect("participant has public key"),
+            expected_pk
+        );
     }
 
     #[test]
@@ -293,8 +314,8 @@ mod tests {
         const THRESHOLD: usize = 2;
         const LIMIT: usize = 3;
 
-        let threshold = NonZeroUsize::new(THRESHOLD).unwrap();
-        let limit = NonZeroUsize::new(LIMIT).unwrap();
+        let threshold = NonZeroUsize::new(THRESHOLD).expect("threshold is non-zero");
+        let limit = NonZeroUsize::new(LIMIT).expect("limit is non-zero");
         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(0);
 
         let original_secret = k256::Scalar::random(&mut rng);
@@ -311,7 +332,7 @@ mod tests {
             &mut rng,
             &[original_peer_id_list],
         )
-        .unwrap();
+        .expect("split original secret");
 
         let new_peer_ids = (1..=LIMIT)
             .map(|_| IdentifierPrimeField(k256::Scalar::random(&mut rng)))
@@ -331,7 +352,7 @@ mod tests {
                 &parameters,
                 &original_peer_ids,
             )
-            .unwrap();
+            .expect("create participant from existing share");
             participants.push(participant);
         }
 
@@ -342,25 +363,33 @@ mod tests {
 
         let shares = participants
             .iter()
-            .map(|p| p.get_secret_share().unwrap())
+            .map(|p| {
+                p.get_secret_share()
+                    .expect("participant has a secret share")
+            })
             .collect::<Vec<_>>();
 
         let res = shares.combine();
         assert!(res.is_ok());
-        let secret = res.unwrap();
+        let secret = res.expect("combine shares");
 
         assert_eq!(secret.0, original_secret);
-        assert_eq!(participants[1].get_public_key().unwrap(), public_key);
+        assert_eq!(
+            participants[1]
+                .get_public_key()
+                .expect("participant has public key"),
+            public_key
+        );
     }
 
     fn next_round<G>(participants: &mut [SecretParticipant<G>]) -> Vec<RoundOutputGenerator<G>>
     where
-        G: SumOfProducts + GroupEncoding + Default,
+        G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
         G::Scalar: ScalarHash,
     {
         let mut round_generators = Vec::with_capacity(participants.len());
         for participant in participants {
-            let generator = participant.run().unwrap();
+            let generator = participant.run().expect("run participant round");
             round_generators.push(generator);
         }
         round_generators
@@ -370,7 +399,7 @@ mod tests {
         participants: &mut [SecretParticipant<G>],
         round_generators: Vec<RoundOutputGenerator<G>>,
     ) where
-        G: SumOfProducts + GroupEncoding + Default,
+        G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
         G::Scalar: ScalarHash,
     {
         for round_generator in &round_generators {

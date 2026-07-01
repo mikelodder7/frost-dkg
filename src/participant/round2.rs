@@ -3,13 +3,14 @@ use crate::{
     RoundOutputGenerator, ScalarHash,
 };
 use elliptic_curve::group::GroupEncoding;
+use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve_tools::SumOfProducts;
 use std::collections::BTreeMap;
 
 impl<I, G> Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     pub(crate) fn round2_ready(&self) -> bool {
@@ -18,7 +19,10 @@ where
 
     pub(crate) fn round2(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round2_ready() {
-            return Err(Error::Round(format!("Round 2 is not ready, haven't received enough data from other participants. Need {} more", self.threshold - self.received_round1_data.len())));
+            return Err(Error::Round(format!(
+                "Round 2 is not ready, haven't received enough data from other participants. Need {} more",
+                self.threshold - self.received_round1_data.len()
+            )));
         }
 
         let mut valid_participant_ids = BTreeMap::new();

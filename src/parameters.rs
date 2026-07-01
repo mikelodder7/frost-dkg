@@ -1,5 +1,6 @@
 use super::*;
 use elliptic_curve::group::GroupEncoding;
+use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve_tools::SumOfProducts;
 use std::num::NonZeroUsize;
 use vsss_rs::{IdentifierPrimeField, ParticipantIdGeneratorType};
@@ -10,7 +11,7 @@ use vsss_rs::{IdentifierPrimeField, ParticipantIdGeneratorType};
 #[derive(Debug, Default, Clone)]
 pub struct Parameters<'a, G>
 where
-    G: GroupEncoding + Default + SumOfProducts,
+    G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     pub(crate) threshold: usize,
@@ -22,7 +23,7 @@ where
 
 impl<'a, G> Parameters<'a, G>
 where
-    G: GroupEncoding + Default + SumOfProducts,
+    G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// Create regular parameters with the message_generator as the default generator

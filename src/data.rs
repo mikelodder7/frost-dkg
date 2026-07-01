@@ -1,7 +1,8 @@
 use super::*;
 use elliptic_curve::group::GroupEncoding;
+use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve::{Group, PrimeField};
-use elliptic_curve_tools::{group, prime_field, SumOfProducts};
+use elliptic_curve_tools::{SumOfProducts, group, prime_field};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
@@ -141,7 +142,7 @@ where
 #[derive(Debug, Clone)]
 pub enum RoundOutputGenerator<G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// The round 1 output generator
@@ -154,7 +155,7 @@ where
 
 impl<G> RoundOutputGenerator<G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// Iterate over the data to send to other participants
@@ -211,7 +212,7 @@ where
 #[derive(Debug, Clone)]
 pub struct Round1OutputGenerator<G>
 where
-    G: GroupEncoding + Default + SumOfProducts,
+    G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// The participant IDs to send to
@@ -234,7 +235,7 @@ where
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Round1Data<G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// The sender's ordinal index
@@ -266,7 +267,7 @@ where
 
 impl<G> Round1Data<G>
 where
-    G: GroupEncoding + Default + SumOfProducts,
+    G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     pub(crate) fn add_to_transcript(&self, transcript: &mut merlin::Transcript) {
@@ -323,7 +324,7 @@ where
 #[derive(Debug, Clone)]
 pub struct Round2OutputGenerator<G>
 where
-    G: GroupEncoding + Default + SumOfProducts,
+    G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// The participant IDs to send to

@@ -4,16 +4,17 @@ mod round3;
 
 use super::*;
 use elliptic_curve::group::GroupEncoding;
+use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve::{Field, Group};
 use elliptic_curve_tools::SumOfProducts;
-use rand_core::{CryptoRngCore, RngCore};
+use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 use vsss_rs::{
-    subtle::ConstantTimeEq, DefaultShare, IdentifierPrimeField, ShareElement, ShareVerifierGroup,
-    ValueGroup, ValuePrimeField,
+    DefaultShare, IdentifierPrimeField, ShareElement, ShareVerifierGroup, ValueGroup,
+    ValuePrimeField, subtle::ConstantTimeEq,
 };
 
 /// Secret Participant type
@@ -31,13 +32,13 @@ pub type FeldmanShareVerifier<G> = ShareVerifierGroup<G>;
 /// Participant implementation
 pub trait ParticipantImpl<G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// Get the participant type
     fn get_type(&self) -> ParticipantType;
     /// Get the participants secret
-    fn random_value(rng: impl CryptoRngCore) -> G::Scalar;
+    fn random_value(rng: impl CryptoRng) -> G::Scalar;
     /// Check the feldman verifier at position 0.
     /// During a new or update key gen, this value is not the identity
     /// during a refresh, it must be identity
@@ -49,7 +50,7 @@ where
 pub struct Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     pub(crate) ordinal: usize,
@@ -73,26 +74,10 @@ where
     pub(crate) participant_impl: I,
 }
 
-unsafe impl<I, G> Send for Participant<I, G>
-where
-    I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
-    G::Scalar: ScalarHash,
-{
-}
-
-unsafe impl<I, G> Sync for Participant<I, G>
-where
-    I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
-    G::Scalar: ScalarHash,
-{
-}
-
 impl<I, G> Debug for Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -114,7 +99,7 @@ where
 
 impl<G> Participant<SecretParticipantImpl<G>, G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// Create a new participant to generate a new key share
@@ -122,7 +107,7 @@ where
         id: IdentifierPrimeField<G::Scalar>,
         parameters: &Parameters<G>,
     ) -> DkgResult<Self> {
-        let rng = rand_core::OsRng;
+        let rng = rand::rng();
         let secret = SecretParticipantImpl::<G>::random_value(rng);
         Self::initialize(id, parameters, IdentifierPrimeField(secret), None)
     }
@@ -148,7 +133,7 @@ where
 
 impl<G> Participant<RefreshParticipantImpl<G>, G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// Create a new participant to refresh an existing key share if it exists.
@@ -160,7 +145,7 @@ where
         existing_share: Option<G::Scalar>,
         parameters: &Parameters<G>,
     ) -> DkgResult<Self> {
-        let secret = existing_share.unwrap_or_else(|| G::Scalar::random(rand_core::OsRng));
+        let secret = existing_share.unwrap_or_else(|| G::Scalar::random(&mut rand::rng()));
         Self::initialize(
             id,
             parameters,
@@ -173,7 +158,7 @@ where
 impl<I, G> Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     fn initialize(
@@ -182,7 +167,7 @@ where
         secret: ValuePrimeField<G::Scalar>,
         verifying_share: Option<G>,
     ) -> DkgResult<Self> {
-        let rng = rand_core::OsRng;
+        let rng = rand::rng();
 
         if parameters.threshold > parameters.limit {
             return Err(Error::Initialization(
@@ -434,19 +419,16 @@ where
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct SecretParticipantImpl<G>(PhantomData<G>);
 
-unsafe impl<G> Send for SecretParticipantImpl<G> {}
-unsafe impl<G> Sync for SecretParticipantImpl<G> {}
-
 impl<G> ParticipantImpl<G> for SecretParticipantImpl<G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     fn get_type(&self) -> ParticipantType {
         ParticipantType::Secret
     }
 
-    fn random_value(mut rng: impl RngCore) -> <G as Group>::Scalar {
+    fn random_value(mut rng: impl CryptoRng) -> <G as Group>::Scalar {
         G::Scalar::random(&mut rng)
     }
 
@@ -459,19 +441,16 @@ where
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct RefreshParticipantImpl<G>(PhantomData<G>);
 
-unsafe impl<G> Send for RefreshParticipantImpl<G> {}
-unsafe impl<G> Sync for RefreshParticipantImpl<G> {}
-
 impl<G> ParticipantImpl<G> for RefreshParticipantImpl<G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     fn get_type(&self) -> ParticipantType {
         ParticipantType::Refresh
     }
 
-    fn random_value(_rng: impl RngCore) -> <G as Group>::Scalar {
+    fn random_value(_rng: impl CryptoRng) -> <G as Group>::Scalar {
         G::Scalar::ZERO
     }
 
@@ -483,7 +462,7 @@ where
 /// A trait to allow for dynamic dispatch of the participant
 pub trait AnyParticipant<G>: Send + Sync + Debug
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     /// Get the ordinal index of this participant
@@ -526,7 +505,7 @@ where
 
 impl<G> AnyParticipant<G> for Participant<SecretParticipantImpl<G>, G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     fn get_ordinal(&self) -> usize {
@@ -604,7 +583,7 @@ where
 
 impl<G> AnyParticipant<G> for Participant<RefreshParticipantImpl<G>, G>
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     fn get_ordinal(&self) -> usize {
@@ -685,7 +664,7 @@ fn get_final_transcript_hash<G>(
     received_round2_data: &BTreeMap<usize, Round2Data<G::Scalar>>,
 ) -> [u8; 32]
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let mut transcript = merlin::Transcript::new(b"Frost DKG - Final Transcript");

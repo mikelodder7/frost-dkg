@@ -1,29 +1,23 @@
-use elliptic_curve::Field;
+use elliptic_curve::{Field, subtle::ConditionallySelectable};
 use elliptic_curve_tools::SumOfProducts;
 use frost_dkg::*;
 use rand_chacha::ChaCha8Rng;
-use rand_core::{RngCore, SeedableRng};
+use rand_core::{Rng, SeedableRng};
 use rstest::*;
 use std::num::NonZeroUsize;
 use vsss_rs::{
-    curve25519::*,
-    elliptic_curve::{group::GroupEncoding, Group},
     IdentifierPrimeField, ParticipantIdGeneratorCollection, ParticipantIdGeneratorType,
     ReadableShareSet,
+    elliptic_curve::{Group, group::GroupEncoding},
 };
 
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY)]
 #[case::p256(p256::ProjectivePoint::IDENTITY)]
-#[case::ed25519(WrappedEdwards::default())]
-#[case::ristretto25519(WrappedRistretto::default())]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY)]
 fn static_init_dkg<G>(#[case] _g: G)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let rng = ChaCha8Rng::from_seed([0u8; 32]);
@@ -33,15 +27,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY)]
 #[case::p256(p256::ProjectivePoint::IDENTITY)]
-#[case::ed25519(WrappedEdwards::default())]
-#[case::ristretto25519(WrappedRistretto::default())]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY)]
 fn static_add_participant_same_threshold<G>(#[case] _g: G)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const THRESHOLD: usize = 3;
@@ -51,15 +40,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY)]
 #[case::p256(p256::ProjectivePoint::IDENTITY)]
-#[case::ed25519(WrappedEdwards::default())]
-#[case::ristretto25519(WrappedRistretto::default())]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY)]
 fn static_add_participant_increase_threshold<G>(#[case] _g: G)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const THRESHOLD: usize = 5;
@@ -69,15 +53,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::default())]
 #[case::p256(p256::ProjectivePoint::default())]
-#[case::ed25519(WrappedEdwards::default())]
-#[case::ristretto25519(WrappedRistretto::default())]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::default())]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::default())]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY)]
 fn static_remove_participant_same_threshold<G>(#[case] _g: G)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const THRESHOLD: usize = 3;
@@ -87,15 +66,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::default())]
 #[case::p256(p256::ProjectivePoint::default())]
-#[case::ed25519(WrappedEdwards::default())]
-#[case::ristretto25519(WrappedRistretto::default())]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::default())]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::default())]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::default())]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY)]
 fn static_remove_participant_decrease_threshold<G>(#[case] _g: G)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const THRESHOLD: usize = 2;
@@ -105,17 +79,12 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 5)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 5)]
-#[case::ed25519(WrappedEdwards::default(), 5)]
-#[case::ristretto25519(WrappedRistretto::default(), 5)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 5)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 2)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 5)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 5)]
 fn static_add_and_remove_participant_increase_participant<G>(
     #[case] _g: G,
     #[case] threshold: usize,
 ) where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     static_five_participants_add_and_remove_increase_participant::<G>(threshold);
@@ -124,17 +93,12 @@ fn static_add_and_remove_participant_increase_participant<G>(
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 3)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 4)]
-#[case::ed25519(WrappedEdwards::default(), 3)]
-#[case::ristretto25519(WrappedRistretto::default(), 2)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 3)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 4)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 3)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 3)]
 fn static_add_and_remove_participant_decrease_participant<G>(
     #[case] _g: G,
     #[case] threshold: usize,
 ) where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     static_five_participants_add_and_remove_decrease_participant::<G>(threshold);
@@ -142,7 +106,7 @@ fn static_add_and_remove_participant_decrease_participant<G>(
 
 fn static_five_participants_add_participant<G>(threshold: usize)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const LIMIT: usize = 5;
@@ -240,7 +204,7 @@ where
 
 fn static_five_participants_remove_participant<G>(threshold: usize)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const LIMIT: usize = 3;
@@ -318,7 +282,7 @@ where
 
 fn static_five_participants_add_and_remove_decrease_participant<G>(threshold: usize)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const LIMIT: usize = 3;
@@ -398,7 +362,7 @@ where
 
 fn static_five_participants_add_and_remove_increase_participant<G>(threshold: usize)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const LIMIT: usize = 3;
@@ -480,10 +444,10 @@ where
 }
 
 fn static_numbering_init_dkg<G>(
-    mut rng: impl RngCore,
+    mut rng: impl Rng,
 ) -> (Vec<Box<dyn AnyParticipant<G>>>, <G as Group>::Scalar)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const THRESHOLD: usize = 3;
@@ -542,15 +506,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY)]
 #[case::p256(p256::ProjectivePoint::IDENTITY)]
-#[case::ed25519(WrappedEdwards::default())]
-#[case::ristretto25519(WrappedRistretto::default())]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY)]
 fn init_dkg<G>(#[case] _g: G)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     five_participants_init::<G>();
@@ -559,15 +518,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY)]
 #[case::p256(p256::ProjectivePoint::IDENTITY)]
-#[case::ed25519(WrappedEdwards::default())]
-#[case::ristretto25519(WrappedRistretto::default())]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY)]
 fn refresh<G>(#[case] _g: G)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const THRESHOLD: usize = 3;
@@ -667,15 +621,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 3)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 3)]
-#[case::ed25519(WrappedEdwards::default(), 3)]
-#[case::ristretto25519(WrappedRistretto::default(), 3)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 3)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 3)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 3)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 3)]
 fn add_participant_same_threshold<G>(#[case] _g: G, #[case] threshold: usize)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     five_participants_add_participant::<G>(threshold);
@@ -685,15 +634,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 5)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 5)]
-#[case::ed25519(WrappedEdwards::default(), 5)]
-#[case::ristretto25519(WrappedRistretto::default(), 5)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 5)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 4)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 5)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 5)]
 fn add_participant_increase_threshold<G>(#[case] _g: G, #[case] threshold: usize)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     five_participants_add_participant::<G>(threshold);
@@ -703,15 +647,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 3)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 3)]
-#[case::ed25519(WrappedEdwards::default(), 3)]
-#[case::ristretto25519(WrappedRistretto::default(), 3)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 3)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 3)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 3)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 3)]
 fn remove_participant_same_threshold<G>(#[case] _g: G, #[case] threshold: usize)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     five_participants_remove_participant::<G>(threshold);
@@ -721,15 +660,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 2)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 2)]
-#[case::ed25519(WrappedEdwards::default(), 2)]
-#[case::ristretto25519(WrappedRistretto::default(), 2)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 2)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 2)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 2)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 2)]
 fn remove_participant_decrease_threshold<G>(#[case] _g: G, #[case] threshold: usize)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     five_participants_remove_participant::<G>(threshold);
@@ -738,15 +672,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 5)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 5)]
-#[case::ed25519(WrappedEdwards::default(), 5)]
-#[case::ristretto25519(WrappedRistretto::default(), 5)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 5)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 2)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 5)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 5)]
 fn add_and_remove_participant_increase_participant<G>(#[case] _g: G, #[case] threshold: usize)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     five_participants_add_and_remove_increase_participant::<G>(threshold);
@@ -755,15 +684,10 @@ where
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 3)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 4)]
-#[case::ed25519(WrappedEdwards::default(), 3)]
-#[case::ristretto25519(WrappedRistretto::default(), 2)]
-#[case::bls12_381_g1(blsful::inner_types::G1Projective::IDENTITY, 3)]
-#[case::bls12_381_g2(blsful::inner_types::G2Projective::IDENTITY, 4)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY, 3)]
-#[case::jubjub(jubjub_plus::SubgroupPoint::IDENTITY, 3)]
 fn add_and_remove_participant_decrease_participant<G>(#[case] _g: G, #[case] threshold: usize)
 where
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     five_participants_add_and_remove_decrease_participant::<G>(threshold);
@@ -771,7 +695,7 @@ where
 
 fn five_participants_init<G>() -> (Vec<Box<dyn AnyParticipant<G>>>, <G as Group>::Scalar)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     const THRESHOLD: usize = 3;
@@ -826,12 +750,14 @@ where
             .values()
             .cloned()
             .collect();
-        assert!(publicly_verify_dkg_results(
-            &round1_data,
-            &parameters,
-            participant.get_public_key().unwrap(),
-        )
-        .is_ok());
+        assert!(
+            publicly_verify_dkg_results(
+                &round1_data,
+                &parameters,
+                participant.get_public_key().unwrap(),
+            )
+            .is_ok()
+        );
     }
 
     (participants, *secret)
@@ -839,7 +765,7 @@ where
 
 fn five_participants_add_participant<G>(threshold: usize)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let (participants, secret) = five_participants_init::<G>();
@@ -956,7 +882,7 @@ where
 
 fn five_participants_remove_participant<G>(threshold: usize)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let (participants, secret) = five_participants_init::<G>();
@@ -1035,7 +961,7 @@ where
 
 fn five_participants_add_and_remove_decrease_participant<G>(threshold: usize)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let (participants, secret) = five_participants_init::<G>();
@@ -1121,7 +1047,7 @@ where
 
 fn five_participants_add_and_remove_increase_participant<G>(threshold: usize)
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let (participants, secret) = five_participants_init::<G>();
@@ -1226,7 +1152,7 @@ where
 
 fn next_round<G>(participants: &mut [Box<dyn AnyParticipant<G>>]) -> Vec<RoundOutputGenerator<G>>
 where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let mut round_generators = Vec::with_capacity(participants.len());
@@ -1241,7 +1167,7 @@ fn receive<G>(
     participants: &mut [Box<dyn AnyParticipant<G>>],
     round_generators: &[RoundOutputGenerator<G>],
 ) where
-    G: GroupEncoding + SumOfProducts + Default,
+    G: GroupEncoding + SumOfProducts + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     for round_generator in round_generators {

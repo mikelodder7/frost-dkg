@@ -4,17 +4,17 @@ use crate::{
     Signature,
 };
 use elliptic_curve::group::GroupEncoding;
-use elliptic_curve::subtle::Choice;
+use elliptic_curve::subtle::{Choice, ConditionallySelectable};
 use elliptic_curve_tools::SumOfProducts;
 
 impl<I, G> Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
-    G: SumOfProducts + GroupEncoding + Default,
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     pub(crate) fn round1(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
-        let k = I::random_value(rand_core::OsRng);
+        let k = I::random_value(rand::rng());
         let r_i = self.message_generator * k;
         let signature = self.compute_signature(k, r_i);
 
