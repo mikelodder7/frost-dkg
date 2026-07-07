@@ -242,6 +242,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "ed448-goldilocks-plus"
+version = "0.18.0-rc0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e60f91b402ffb5a72fb61eb06c4f85d499094fd8b8d5735d73309a05708f44a2"
+dependencies = [
+ "crypto-bigint",
+ "elliptic-curve",
+ "ff",
+ "group",
+ "hash2curve",
+ "pkcs8",
+ "rand_core 0.10.1",
+ "serdect",
+ "sha3",
+ "shake",
+ "signature",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "elliptic-curve"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -329,9 +350,10 @@ checksum = "64cd1e32ddd350061ae6edb1b082d7c54915b5c672c389143b9a63403a109f24"
 
 [[package]]
 name = "frost-dkg"
-version = "0.6.0-rc0"
+version = "0.6.0-rc1"
 dependencies = [
- "ed448-goldilocks-plus",
+ "ed448-goldilocks-plus 0.17.0",
+ "ed448-goldilocks-plus 0.18.0-rc0",
  "elliptic-curve",
  "elliptic-curve-tools",
  "hash2curve",
