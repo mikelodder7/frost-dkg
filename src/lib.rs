@@ -6,7 +6,7 @@
 //!
 //! The full paper can be found [here](https://eprint.iacr.org/2020/852.pdf).
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(
     missing_docs,
     missing_debug_implementations,
