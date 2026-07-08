@@ -15,6 +15,8 @@ use vsss_rs::{
 #[case::k256(k256::ProjectivePoint::IDENTITY)]
 #[case::p256(p256::ProjectivePoint::IDENTITY)]
 #[case::ed448(ed448_goldilocks_plus::EdwardsPoint::IDENTITY)]
+#[case::curve25519_dalek(curve25519_dalek::RistrettoPoint::default())]
+#[case::curve25519_dalek_edwards(curve25519_dalek::EdwardsPoint::default())]
 fn static_init_dkg<G>(#[case] _g: G)
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,

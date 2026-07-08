@@ -2,6 +2,8 @@
 mod tbls12_381_plus;
 #[cfg(feature = "blstrs_plus")]
 mod tblstrs_plus;
+#[cfg(feature = "curve25519-dalek")]
+mod tcurve25519_dalek;
 #[cfg(feature = "ed448")]
 mod ted448;
 #[cfg(feature = "k256")]
