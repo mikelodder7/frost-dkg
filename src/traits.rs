@@ -1,3 +1,7 @@
+#[cfg(feature = "bls12_381_plus")]
+mod tbls12_381_plus;
+#[cfg(feature = "blstrs_plus")]
+mod tblstrs_plus;
 #[cfg(feature = "ed448")]
 mod ted448;
 #[cfg(feature = "k256")]

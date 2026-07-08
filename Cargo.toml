@@ -11,10 +11,12 @@ license = "Apache-2.0 OR MIT"
 name = "frost-dkg"
 readme = "README.md"
 repository = "https://github.com/mikelodder7/frost-dkg"
-version = "0.6.0-rc1"
+version = "0.6.0-rc2"
 
 [features]
-default = ["ed448", "k256", "p256", "p384"]
+default = ["bls12_381_plus", "blstrs_plus", "ed448", "k256", "p256", "p384"]
+bls12_381_plus = ["dep:bls12_381_plus", "dep:sha2_010"]
+blstrs_plus = ["dep:blstrs_plus", "dep:sha2_010"]
 ed448 = ["ed448-goldilocks-plus", "sha3", "shake"]
 k256 = ["dep:k256", "sha2"]
 p256 = ["dep:p256", "sha2"]
@@ -33,16 +35,21 @@ thiserror = "2.0"
 postcard = { version = "1.1", features = ["use-std"] }
 vsss-rs = "6.0.0-rc1"
 
+bls12_381_plus = { version = "0.9.0-rc1", features = ["expose-fields"], optional = true }
+blstrs_plus = { version = "0.9.0-rc1", features = ["expose-fields"], optional = true }
 ed448-goldilocks-plus = { version = "0.18.0-rc0", optional = true }
 k256 = { version = "0.14.0-rc.15", features = ["arithmetic", "hash2curve"], optional = true }
 p256 = { version = "0.14.0-rc.15", features = ["arithmetic", "hash2curve"], optional = true }
 p384 = { version = "0.14.0-rc.15", features = ["arithmetic", "hash2curve"], optional = true }
 sha2 = { version = "0.11", optional = true }
+sha2_010 = { version = "0.10", package = "sha2", optional = true }
 sha3 = { version = "0.12", optional = true }
 shake = { version = "0.1", optional = true }
 
 [dev-dependencies]
-ed448-goldilocks-plus = "0.17.0"
+bls12_381_plus = { version = "0.9.0-rc1", features = ["expose-fields"] }
+blstrs_plus = { version = "0.9.0-rc1", features = ["expose-fields"] }
+ed448-goldilocks-plus = "0.18.0-rc0"
 k256 = { version = "0.14.0-rc.15", features = ["arithmetic"] }
 p256 = { version = "0.14.0-rc.15", features = ["arithmetic"] }
 p384 = { version = "0.14.0-rc.15", features = ["arithmetic"] }
