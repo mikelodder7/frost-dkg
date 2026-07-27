@@ -628,7 +628,7 @@ where
 }
 
 /// The output generator for round 2
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Round2OutputGenerator<G>
 where
     G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
@@ -648,8 +648,25 @@ where
     pub(crate) transcript_hash: [u8; 32],
 }
 
+impl<G> fmt::Debug for Round2OutputGenerator<G>
+where
+    G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
+    G::Scalar: ScalarHash,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Round2OutputGenerator")
+            .field("participant_ids", &self.participant_ids)
+            .field("sender_ordinal", &self.sender_ordinal)
+            .field("sender_id", &self.sender_id)
+            .field("sender_type", &self.sender_type)
+            .field("recipient_count", &self.secret_shares.len())
+            .field("transcript_hash", &self.transcript_hash)
+            .finish()
+    }
+}
+
 /// The round 2 data
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 pub struct Round2Data<F: ScalarHash> {
     /// The sender's ordinal index
     pub(crate) sender_ordinal: usize,
@@ -669,6 +686,17 @@ pub struct Round2Data<F: ScalarHash> {
     pub(crate) secret_share: SecretShare<F>,
     /// The transcript of all messages received
     pub(crate) transcript_hash: [u8; 32],
+}
+
+impl<F: ScalarHash> fmt::Debug for Round2Data<F> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Round2Data")
+            .field("sender_ordinal", &self.sender_ordinal)
+            .field("sender_id", &self.sender_id)
+            .field("sender_type", &self.sender_type)
+            .field("transcript_hash", &self.transcript_hash)
+            .finish_non_exhaustive()
+    }
 }
 
 impl<F: ScalarHash> Round2Data<F> {
@@ -711,6 +739,28 @@ impl<F: ScalarHash> Round2Data<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn round_two_debug_omits_secret_shares() {
+        let data = Round2Data::<k256::Scalar> {
+            sender_ordinal: 0,
+            sender_id: IdentifierPrimeField::ONE,
+            sender_type: ParticipantType::Secret,
+            secret_share: SecretShare::default(),
+            transcript_hash: [0; 32],
+        };
+        let generator = Round2OutputGenerator::<k256::ProjectivePoint> {
+            participant_ids: vec![Some(IdentifierPrimeField::ONE)],
+            sender_ordinal: 0,
+            sender_id: IdentifierPrimeField::ONE,
+            sender_type: ParticipantType::Secret,
+            secret_shares: vec![SecretShare::default()],
+            transcript_hash: [0; 32],
+        };
+
+        assert!(!format!("{data:?}").contains("secret_share"));
+        assert!(!format!("{generator:?}").contains("secret_share"));
+    }
 
     #[test]
     fn serialized_round_message_prefixes_payload_without_changing_it() {
