@@ -258,6 +258,13 @@ impl fmt::Debug for WireMessage {
     }
 }
 
+fn serialize_round_message<T>(round: Round, value: &T) -> DkgResult<WireMessage>
+where
+    T: Serialize + ?Sized,
+{
+    Ok(postcard::to_extend(value, vec![u8::from(round)])?.into())
+}
+
 /// The transport destination for an opaque protocol message.
 #[derive(Clone, Debug)]
 pub enum MessageDestination<F: ScalarHash> {
@@ -371,8 +378,6 @@ where
                     verifying_share: data.verifying_share,
                     signature: data.signature,
                 };
-                let mut output = postcard::to_stdvec(&round1_output_data)?;
-                output.insert(0, u8::from(Round::One));
                 let mut broadcast_recipients = data
                     .participant_ids
                     .into_iter()
@@ -382,7 +387,7 @@ where
                 Ok(OutboundMessages {
                     messages: vec![OutboundMessage {
                         destination: MessageDestination::Broadcast,
-                        message: WireMessage(Arc::from(output)),
+                        message: serialize_round_message(Round::One, &round1_output_data)?,
                     }],
                     broadcast_recipients,
                 })
@@ -404,11 +409,9 @@ where
                         secret_share: data.secret_shares[ordinal],
                         transcript_hash: data.transcript_hash,
                     };
-                    let mut output = postcard::to_stdvec(&round2_output_data)?;
-                    output.insert(0, u8::from(Round::Two));
                     messages.push(OutboundMessage {
                         destination: MessageDestination::Direct { ordinal, id },
-                        message: WireMessage(Arc::from(output)),
+                        message: serialize_round_message(Round::Two, &round2_output_data)?,
                     });
                 }
                 Ok(OutboundMessages {
@@ -437,9 +440,7 @@ where
                     verifying_share: data.verifying_share,
                     signature: data.signature,
                 };
-                let mut output = postcard::to_stdvec(&round1_output_data)?;
-                output.insert(0, u8::from(Round::One));
-                let output = WireMessage::from(output);
+                let output = serialize_round_message(Round::One, &round1_output_data)?;
                 data.participant_ids
                     .iter()
                     .enumerate()
@@ -470,9 +471,8 @@ where
                     };
                     debug_assert_eq!(data.secret_shares[index].identifier, *id);
                     round2_output_data.secret_share = data.secret_shares[index];
-                    let mut output = postcard::to_stdvec(&round2_output_data)?;
-                    output.insert(0, u8::from(Round::Two));
-                    outputs.push(ParticipantRoundOutput::new(index, *id, output.into()));
+                    let output = serialize_round_message(Round::Two, &round2_output_data)?;
+                    outputs.push(ParticipantRoundOutput::new(index, *id, output));
                 }
                 outputs
             }
@@ -678,6 +678,18 @@ impl<F: ScalarHash> Round2Data<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn serialized_round_message_prefixes_payload_without_changing_it() {
+        let message =
+            serialize_round_message(Round::Two, &42_u16).expect("serialize framed payload");
+
+        assert_eq!(message.as_bytes().first(), Some(&u8::from(Round::Two)));
+        assert_eq!(
+            postcard::from_bytes::<u16>(&message.as_bytes()[1..]).expect("deserialize payload"),
+            42
+        );
+    }
 
     #[test]
     fn participant_round_output_postcard_round_trip() {
