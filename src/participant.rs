@@ -745,90 +745,9 @@ where
     }
 }
 
-impl<G> AnyParticipant<G> for Participant<SecretParticipantImpl<G>, G>
+impl<I, G> AnyParticipant<G> for Participant<I, G>
 where
-    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
-    G::Scalar: ScalarHash,
-{
-    fn ordinal(&self) -> usize {
-        self.ordinal
-    }
-
-    fn id(&self) -> IdentifierPrimeField<G::Scalar> {
-        self.id
-    }
-
-    fn threshold(&self) -> usize {
-        self.threshold
-    }
-
-    fn limit(&self) -> usize {
-        self.limit
-    }
-
-    fn round(&self) -> Round {
-        self.round
-    }
-
-    fn secret_share(&self) -> Option<SecretShare<G::Scalar>> {
-        self.secret_share()
-    }
-
-    fn public_key(&self) -> Option<G> {
-        self.public_key()
-    }
-
-    fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
-        &self.valid_participant_ids
-    }
-
-    fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
-        &self.all_participant_ids
-    }
-
-    fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
-        self.feldman_verifiers()
-    }
-
-    fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
-        &self.received_round1_data
-    }
-
-    fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
-        &self.received_round2_data
-    }
-
-    fn verifying_share(&self) -> G {
-        self.verifying_share
-    }
-
-    fn final_transcript_hash(&self) -> [u8; 32] {
-        get_final_transcript_hash(&self.received_round1_data, &self.received_round2_data)
-    }
-
-    fn completed(&self) -> bool {
-        self.completed()
-    }
-
-    fn receive(&mut self, data: &[u8]) -> DkgResult<()> {
-        self.receive(data)
-    }
-
-    fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
-        self.run()
-    }
-
-    fn advance(&mut self) -> DkgResult<AdvanceResult<G::Scalar>> {
-        self.advance()
-    }
-
-    fn into_output(self: Box<Self>) -> DkgResult<DkgOutput<G>> {
-        (*self).into_output()
-    }
-}
-
-impl<G> AnyParticipant<G> for Participant<RefreshParticipantImpl<G>, G>
-where
+    I: ParticipantImpl<G> + Default + Send + Sync,
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
