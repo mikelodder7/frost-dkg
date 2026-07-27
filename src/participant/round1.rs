@@ -26,8 +26,7 @@ where
             verifying_share: self.verifying_share,
             signature,
         };
-        self.received_round1_data
-            .insert(self.ordinal, self_round1_data);
+        self.received_round1_data[self.ordinal] = Some(self_round1_data);
         self.round = Round::Two;
         Ok(RoundOutputGenerator::Round1(Round1OutputGenerator {
             participant_ids: self.all_participant_ids.clone(),
@@ -83,7 +82,11 @@ where
                 Round::One
             )));
         }
-        if self.received_round1_data.contains_key(&data.sender_ordinal) {
+        if self
+            .received_round1_data
+            .get(data.sender_ordinal)
+            .is_some_and(Option::is_some)
+        {
             return Err(Error::Round(format!(
                 "Round: {}, Sender has already sent data",
                 Round::One
@@ -130,7 +133,8 @@ where
         }
         self.verify_signature(&data)?;
 
-        self.received_round1_data.insert(data.sender_ordinal, data);
+        let sender_ordinal = data.sender_ordinal;
+        self.received_round1_data[sender_ordinal] = Some(data);
         Ok(())
     }
 }

@@ -9,7 +9,7 @@ use elliptic_curve::{Field, Group};
 use elliptic_curve_tools::SumOfProducts;
 use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 use vsss_rs::{
@@ -99,7 +99,7 @@ where
     pub(crate) limit: usize,
     pub(crate) round: Round,
     pub(crate) completed: bool,
-    pub(crate) secret_shares: BTreeMap<usize, SecretShare<G::Scalar>>,
+    pub(crate) secret_shares: Vec<SecretShare<G::Scalar>>,
     pub(crate) feldman_verifiers: Vec<ValueGroup<G>>,
     pub(crate) original_secret: G::Scalar,
     pub(crate) verifying_share: G,
@@ -107,10 +107,10 @@ where
     pub(crate) message_generator: G,
     pub(crate) public_key: ValueGroup<G>,
     pub(crate) powers_of_i: Vec<G::Scalar>,
-    pub(crate) received_round1_data: BTreeMap<usize, Round1Data<G>>,
-    pub(crate) received_round2_data: BTreeMap<usize, Round2Data<G::Scalar>>,
-    pub(crate) all_participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
-    pub(crate) valid_participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+    pub(crate) received_round1_data: Vec<Option<Round1Data<G>>>,
+    pub(crate) received_round2_data: Vec<Option<Round2Data<G::Scalar>>>,
+    pub(crate) all_participant_ids: Vec<IdentifierPrimeField<G::Scalar>>,
+    pub(crate) valid_participant_ids: Vec<Option<IdentifierPrimeField<G::Scalar>>>,
     pub(crate) participant_impl: I,
 }
 
@@ -268,11 +268,7 @@ where
                 ))
             })?;
 
-        let all_participant_ids = shares
-            .iter()
-            .enumerate()
-            .map(|(i, s)| (i, s.identifier))
-            .collect();
+        let all_participant_ids = shares.iter().map(|share| share.identifier).collect();
         Ok(Self {
             ordinal,
             id,
@@ -282,20 +278,20 @@ where
             round: Round::One,
             original_secret: secret.0,
             verifying_share,
-            secret_shares: shares
-                .iter()
-                .enumerate()
-                .map(|(ordinal, share)| (ordinal, *share))
-                .collect(),
+            secret_shares: shares,
             feldman_verifiers: verifiers,
             secret_share: SecretShare::<G::Scalar>::default(),
             message_generator: parameters.message_generator,
             public_key: ValueGroup::<G>::identity(),
             powers_of_i,
-            received_round1_data: BTreeMap::new(),
-            received_round2_data: BTreeMap::new(),
+            received_round1_data: std::iter::repeat_with(|| None)
+                .take(parameters.limit)
+                .collect(),
+            received_round2_data: std::iter::repeat_with(|| None)
+                .take(parameters.limit)
+                .collect(),
             all_participant_ids,
-            valid_participant_ids: BTreeMap::new(),
+            valid_participant_ids: vec![None; parameters.limit],
             participant_impl: Default::default(),
         })
     }
@@ -353,12 +349,12 @@ where
     }
 
     /// Return the list of all participants that started the protocol
-    pub fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    pub fn all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>] {
         &self.all_participant_ids
     }
 
     /// Return the list of valid participant ids
-    pub fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    pub fn valid_participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>] {
         &self.valid_participant_ids
     }
 
@@ -368,12 +364,12 @@ where
     }
 
     /// Get the received round 1 data so far
-    pub fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+    pub fn received_round1_data(&self) -> &[Option<Round1Data<G>>] {
         &self.received_round1_data
     }
 
     /// Get the received round 2 data so far
-    pub fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+    pub fn received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>] {
         &self.received_round2_data
     }
 
@@ -452,13 +448,13 @@ where
 
     /// Return the list of all participants that started the protocol.
     #[deprecated(since = "0.6.0", note = "use `all_participant_ids` instead")]
-    pub fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    pub fn get_all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>] {
         self.all_participant_ids()
     }
 
     /// Return the list of valid participant IDs.
     #[deprecated(since = "0.6.0", note = "use `valid_participant_ids` instead")]
-    pub fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    pub fn get_valid_participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>] {
         self.valid_participant_ids()
     }
 
@@ -470,13 +466,13 @@ where
 
     /// Get the received round 1 data so far.
     #[deprecated(since = "0.6.0", note = "use `received_round1_data` instead")]
-    pub fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+    pub fn get_received_round1_data(&self) -> &[Option<Round1Data<G>>] {
         self.received_round1_data()
     }
 
     /// Get the received round 2 data so far.
     #[deprecated(since = "0.6.0", note = "use `received_round2_data` instead")]
-    pub fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+    pub fn get_received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>] {
         self.received_round2_data()
     }
 
@@ -528,7 +524,7 @@ where
     ) -> DkgResult<()> {
         let id = self
             .all_participant_ids
-            .get(&sender_ordinal)
+            .get(sender_ordinal)
             .ok_or_else(|| {
                 Error::Round(format!(
                     "Round {round}: Unknown sender ordinal, {sender_ordinal}"
@@ -636,15 +632,15 @@ where
     /// The public key, if the protocol is complete.
     fn public_key(&self) -> Option<G>;
     /// The valid participant IDs from the last round.
-    fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
+    fn valid_participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>];
     /// All participant IDs that started the protocol.
-    fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
+    fn all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>];
     /// The Feldman verifiers.
     fn feldman_verifiers(&self) -> &[ShareVerifierGroup<G>];
     /// The received round 1 data so far.
-    fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>>;
+    fn received_round1_data(&self) -> &[Option<Round1Data<G>>];
     /// The received round 2 data so far.
-    fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>>;
+    fn received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>];
     /// The verifying share.
     fn verifying_share(&self) -> G;
     /// The final transcript hash.
@@ -704,13 +700,13 @@ where
 
     /// Get the valid participant IDs from the last round.
     #[deprecated(since = "0.6.0", note = "use `valid_participant_ids` instead")]
-    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn get_valid_participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>] {
         self.valid_participant_ids()
     }
 
     /// Get all participant IDs that started the protocol.
     #[deprecated(since = "0.6.0", note = "use `all_participant_ids` instead")]
-    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn get_all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>] {
         self.all_participant_ids()
     }
 
@@ -722,13 +718,13 @@ where
 
     /// Get the received round 1 data so far.
     #[deprecated(since = "0.6.0", note = "use `received_round1_data` instead")]
-    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+    fn get_received_round1_data(&self) -> &[Option<Round1Data<G>>] {
         self.received_round1_data()
     }
 
     /// Get the received round 2 data so far.
     #[deprecated(since = "0.6.0", note = "use `received_round2_data` instead")]
-    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+    fn get_received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>] {
         self.received_round2_data()
     }
 
@@ -779,11 +775,11 @@ where
         self.public_key()
     }
 
-    fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn valid_participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>] {
         &self.valid_participant_ids
     }
 
-    fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>] {
         &self.all_participant_ids
     }
 
@@ -791,11 +787,11 @@ where
         &self.feldman_verifiers
     }
 
-    fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+    fn received_round1_data(&self) -> &[Option<Round1Data<G>>] {
         &self.received_round1_data
     }
 
-    fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+    fn received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>] {
         &self.received_round2_data
     }
 
@@ -829,18 +825,18 @@ where
 }
 
 fn get_final_transcript_hash<G>(
-    received_round1_data: &BTreeMap<usize, Round1Data<G>>,
-    received_round2_data: &BTreeMap<usize, Round2Data<G::Scalar>>,
+    received_round1_data: &[Option<Round1Data<G>>],
+    received_round2_data: &[Option<Round2Data<G::Scalar>>],
 ) -> [u8; 32]
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let mut transcript = merlin::Transcript::new(b"Frost DKG - Final Transcript");
-    for round1data in received_round1_data.values() {
+    for round1data in received_round1_data.iter().flatten() {
         round1data.add_to_transcript(&mut transcript);
     }
-    for round2data in received_round2_data.values() {
+    for round2data in received_round2_data.iter().flatten() {
         round2data.add_to_transcript(&mut transcript);
     }
     let mut transcript_hash = [0u8; 32];

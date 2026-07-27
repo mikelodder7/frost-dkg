@@ -41,7 +41,7 @@ use elliptic_curve::{
     subtle::{Choice, ConditionallySelectable},
 };
 use elliptic_curve_tools::SumOfProducts;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use vsss_rs::{IdentifierPrimeField, ParticipantIdGeneratorCollection, ShareVerifierGroup};
 
 /// Round1 data represent all the broadcast information. Using this
@@ -72,11 +72,10 @@ where
         )));
     }
 
-    let all_participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>> =
+    let all_participant_ids: Vec<IdentifierPrimeField<G::Scalar>> =
         ParticipantIdGeneratorCollection::from(&parameters.participant_number_generators)
             .iter()
             .take(parameters.limit)
-            .enumerate()
             .collect();
     if all_participant_ids.len() != parameters.limit {
         return Err(Error::Pvss(format!(
@@ -98,7 +97,7 @@ where
                 round1_data.sender_ordinal
             )));
         }
-        let Some(id) = all_participant_ids.get(&round1_data.sender_ordinal) else {
+        let Some(id) = all_participant_ids.get(round1_data.sender_ordinal) else {
             return Err(Error::Pvss(format!(
                 "Data at {} doesn't exist in the set of participants",
                 i + 1
@@ -209,7 +208,7 @@ where
     message_generator: &'a G,
     feldman_verifiers: &'a [ShareVerifierGroup<G>],
     verifying_share: &'a G,
-    all_participant_ids: &'a BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+    all_participant_ids: &'a [IdentifierPrimeField<G::Scalar>],
 }
 
 pub(crate) fn verify_signature<G>(
@@ -250,7 +249,7 @@ where
     bytes.extend_from_slice(&(context.threshold as u16).to_be_bytes());
     bytes.extend_from_slice(&(context.limit as u16).to_be_bytes());
     bytes.extend_from_slice(context.message_generator.to_bytes().as_ref());
-    for id in context.all_participant_ids.values() {
+    for id in context.all_participant_ids {
         bytes.extend_from_slice(id.0.to_repr().as_ref());
     }
     // Add the R_i
@@ -355,7 +354,8 @@ mod tests {
 
         let round1_data = participants[0]
             .received_round1_data()
-            .values()
+            .iter()
+            .flatten()
             .cloned()
             .collect::<Vec<_>>();
         let public_key = participants[0]

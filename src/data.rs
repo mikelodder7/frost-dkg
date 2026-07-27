@@ -4,7 +4,6 @@ use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve::{Group, PrimeField};
 use elliptic_curve_tools::{SumOfProducts, group, prime_field};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
 use std::sync::Arc;
 use vsss_rs::{IdentifierPrimeField, ShareVerifierGroup};
@@ -155,7 +154,7 @@ where
     pub(crate) secret_share: SecretShare<G::Scalar>,
     pub(crate) public_key: G,
     pub(crate) feldman_verifiers: Vec<ShareVerifierGroup<G>>,
-    pub(crate) participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+    pub(crate) participant_ids: Vec<Option<IdentifierPrimeField<G::Scalar>>>,
     pub(crate) transcript_hash: [u8; 32],
 }
 
@@ -195,7 +194,7 @@ where
     }
 
     /// The participants included in the completed DKG.
-    pub fn participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    pub fn participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>] {
         &self.participant_ids
     }
 
@@ -296,7 +295,7 @@ impl<F: ScalarHash> OutboundMessage<F> {
 #[derive(Clone, Debug)]
 pub struct OutboundMessages<F: ScalarHash> {
     messages: Vec<OutboundMessage<F>>,
-    broadcast_recipients: BTreeMap<usize, IdentifierPrimeField<F>>,
+    broadcast_recipients: Vec<Option<IdentifierPrimeField<F>>>,
 }
 
 impl<F: ScalarHash> OutboundMessages<F> {
@@ -313,9 +312,13 @@ impl<F: ScalarHash> OutboundMessages<F> {
         for message in self.messages {
             match message.destination {
                 MessageDestination::Broadcast => {
-                    outputs.extend(self.broadcast_recipients.iter().map(|(&ordinal, &id)| {
-                        ParticipantRoundOutput::new(ordinal, id, message.message.clone())
-                    }));
+                    outputs.extend(self.broadcast_recipients.iter().enumerate().filter_map(
+                        |(ordinal, id)| {
+                            id.map(|id| {
+                                ParticipantRoundOutput::new(ordinal, id, message.message.clone())
+                            })
+                        },
+                    ));
                 }
                 MessageDestination::Direct { ordinal, id } => {
                     outputs.push(ParticipantRoundOutput::new(ordinal, id, message.message));
@@ -370,11 +373,12 @@ where
                 };
                 let mut output = postcard::to_stdvec(&round1_output_data)?;
                 output.insert(0, u8::from(Round::One));
-                let broadcast_recipients = data
+                let mut broadcast_recipients = data
                     .participant_ids
                     .into_iter()
-                    .filter(|(ordinal, _)| *ordinal != data.sender_ordinal)
-                    .collect();
+                    .map(Some)
+                    .collect::<Vec<_>>();
+                broadcast_recipients[data.sender_ordinal] = None;
                 Ok(OutboundMessages {
                     messages: vec![OutboundMessage {
                         destination: MessageDestination::Broadcast,
@@ -385,16 +389,19 @@ where
             }
             Self::Round2(data) => {
                 let mut messages = Vec::with_capacity(data.participant_ids.len().saturating_sub(1));
-                for (ordinal, id) in data.participant_ids {
+                for (ordinal, id) in data.participant_ids.into_iter().enumerate() {
                     if ordinal == data.sender_ordinal {
                         continue;
                     }
-                    debug_assert_eq!(data.secret_shares[&ordinal].identifier, id);
+                    let Some(id) = id else {
+                        continue;
+                    };
+                    debug_assert_eq!(data.secret_shares[ordinal].identifier, id);
                     let round2_output_data = Round2Data {
                         sender_ordinal: data.sender_ordinal,
                         sender_id: data.sender_id,
                         sender_type: data.sender_type,
-                        secret_share: data.secret_shares[&ordinal],
+                        secret_share: data.secret_shares[ordinal],
                         transcript_hash: data.transcript_hash,
                     };
                     let mut output = postcard::to_stdvec(&round2_output_data)?;
@@ -406,12 +413,12 @@ where
                 }
                 Ok(OutboundMessages {
                     messages,
-                    broadcast_recipients: BTreeMap::new(),
+                    broadcast_recipients: Vec::new(),
                 })
             }
             Self::Round3 => Ok(OutboundMessages {
                 messages: Vec::new(),
-                broadcast_recipients: BTreeMap::new(),
+                broadcast_recipients: Vec::new(),
             }),
         }
     }
@@ -435,11 +442,12 @@ where
                 let output = WireMessage::from(output);
                 data.participant_ids
                     .iter()
+                    .enumerate()
                     .filter_map(|(index, id)| {
-                        if *index == data.sender_ordinal {
+                        if index == data.sender_ordinal {
                             None
                         } else {
-                            Some(ParticipantRoundOutput::new(*index, *id, output.clone()))
+                            Some(ParticipantRoundOutput::new(index, *id, output.clone()))
                         }
                     })
                     .collect()
@@ -453,15 +461,18 @@ where
                     transcript_hash: data.transcript_hash,
                 };
                 let mut outputs = Vec::with_capacity(data.participant_ids.len().saturating_sub(1));
-                for (index, &id) in &data.participant_ids {
-                    if *index == data.sender_ordinal {
+                for (index, id) in data.participant_ids.iter().enumerate() {
+                    if index == data.sender_ordinal {
                         continue;
                     }
-                    debug_assert_eq!(data.secret_shares[index].identifier, id);
+                    let Some(id) = id else {
+                        continue;
+                    };
+                    debug_assert_eq!(data.secret_shares[index].identifier, *id);
                     round2_output_data.secret_share = data.secret_shares[index];
                     let mut output = postcard::to_stdvec(&round2_output_data)?;
                     output.insert(0, u8::from(Round::Two));
-                    outputs.push(ParticipantRoundOutput::new(*index, id, output.into()));
+                    outputs.push(ParticipantRoundOutput::new(index, *id, output.into()));
                 }
                 outputs
             }
@@ -479,7 +490,7 @@ where
     G::Scalar: ScalarHash,
 {
     /// The participant IDs to send to
-    pub(crate) participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+    pub(crate) participant_ids: Vec<IdentifierPrimeField<G::Scalar>>,
     /// The sender's participant type
     pub(crate) sender_type: ParticipantType,
     /// The sender's ordinal index
@@ -591,7 +602,7 @@ where
     G::Scalar: ScalarHash,
 {
     /// The participant IDs to send to
-    pub(crate) participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+    pub(crate) participant_ids: Vec<Option<IdentifierPrimeField<G::Scalar>>>,
     /// The sender's ordinal index
     pub(crate) sender_ordinal: usize,
     /// The sender's ID
@@ -599,7 +610,7 @@ where
     /// The sender's participant type
     pub(crate) sender_type: ParticipantType,
     /// The peer 2 peer data based on the participant ordinal index
-    pub(crate) secret_shares: BTreeMap<usize, SecretShare<G::Scalar>>,
+    pub(crate) secret_shares: Vec<SecretShare<G::Scalar>>,
     /// The transcript hash
     pub(crate) transcript_hash: [u8; 32],
 }

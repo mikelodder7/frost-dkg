@@ -5,7 +5,6 @@ use crate::{
 use elliptic_curve::group::GroupEncoding;
 use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve_tools::SumOfProducts;
-use std::collections::BTreeMap;
 
 impl<I, G> Participant<I, G>
 where
@@ -14,36 +13,34 @@ where
     G::Scalar: ScalarHash,
 {
     pub(crate) fn round2_ready(&self) -> bool {
-        self.round == Round::Two && self.received_round1_data.len() >= self.threshold
+        self.round == Round::Two
+            && self.received_round1_data.iter().flatten().count() >= self.threshold
     }
 
     pub(crate) fn round2(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round2_ready() {
             return Err(Error::Round(format!(
                 "Round 2 is not ready, haven't received enough data from other participants. Need {} more",
-                self.threshold - self.received_round1_data.len()
+                self.threshold - self.received_round1_data.iter().flatten().count()
             )));
         }
 
-        let mut valid_participant_ids = BTreeMap::new();
+        let mut valid_participant_ids = vec![None; self.limit];
         let mut transcript = merlin::Transcript::new(b"Frost DKG - Round 2 Transcript");
-        for round1data in self.received_round1_data.values() {
+        for round1data in self.received_round1_data.iter().flatten() {
             round1data.add_to_transcript(&mut transcript);
-            valid_participant_ids.insert(round1data.sender_ordinal, round1data.sender_id);
+            valid_participant_ids[round1data.sender_ordinal] = Some(round1data.sender_id);
         }
         self.valid_participant_ids = valid_participant_ids.clone();
         let mut transcript_hash = [0u8; 32];
         transcript.challenge_bytes(b"round 2 result", &mut transcript_hash);
-        self.received_round2_data.insert(
-            self.ordinal,
-            Round2Data {
-                sender_ordinal: self.ordinal,
-                sender_id: self.id,
-                sender_type: self.participant_impl.get_type(),
-                secret_share: self.secret_shares[&self.ordinal],
-                transcript_hash,
-            },
-        );
+        self.received_round2_data[self.ordinal] = Some(Round2Data {
+            sender_ordinal: self.ordinal,
+            sender_id: self.id,
+            sender_type: self.participant_impl.get_type(),
+            secret_share: self.secret_shares[self.ordinal],
+            transcript_hash,
+        });
 
         self.round = Round::Three;
         Ok(RoundOutputGenerator::Round2(Round2OutputGenerator {
@@ -66,14 +63,19 @@ where
         self.check_sending_participant_id(Round::Two, data.sender_ordinal, data.sender_id)?;
         if !self
             .valid_participant_ids
-            .contains_key(&data.sender_ordinal)
+            .get(data.sender_ordinal)
+            .is_some_and(Option::is_some)
         {
             return Err(Error::Round(format!(
                 "Round {}: Not a valid participant",
                 Round::Two
             )));
         }
-        if self.received_round2_data.contains_key(&data.sender_ordinal) {
+        if self
+            .received_round2_data
+            .get(data.sender_ordinal)
+            .is_some_and(Option::is_some)
+        {
             return Err(Error::Round(format!(
                 "Round {}: Sender has already sent data",
                 Round::Two
@@ -81,7 +83,8 @@ where
         }
         let self_data = self
             .received_round2_data
-            .get(&self.ordinal)
+            .get(self.ordinal)
+            .and_then(Option::as_ref)
             .ok_or_else(|| {
                 Error::Round(format!(
                     "Round {}: Self doesn't have round 2 data",
@@ -97,7 +100,8 @@ where
 
         let round1_data = self
             .received_round1_data
-            .get(&data.sender_ordinal)
+            .get(data.sender_ordinal)
+            .and_then(Option::as_ref)
             .ok_or_else(|| {
                 Error::Round(format!(
                     "Round {}: Sender has not sent round 1 data",
@@ -120,7 +124,8 @@ where
                 Round::Three
             )));
         }
-        self.received_round2_data.insert(data.sender_ordinal, data);
+        let sender_ordinal = data.sender_ordinal;
+        self.received_round2_data[sender_ordinal] = Some(data);
         Ok(())
     }
 }

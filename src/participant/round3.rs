@@ -15,14 +15,15 @@ where
     G::Scalar: ScalarHash,
 {
     pub(crate) fn round3_ready(&self) -> bool {
-        self.round == Round::Three && self.received_round2_data.len() >= self.threshold
+        self.round == Round::Three
+            && self.received_round2_data.iter().flatten().count() >= self.threshold
     }
 
     pub(crate) fn round3(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round3_ready() {
             return Err(Error::Round(format!(
                 "Round 3 is not ready, haven't received enough data from other participants. Need {} more",
-                self.threshold - self.received_round2_data.len()
+                self.threshold - self.received_round2_data.iter().flatten().count()
             )));
         }
 
@@ -31,15 +32,24 @@ where
             IdentifierPrimeField(G::Scalar::ZERO),
         );
         let mut public_key = ValueGroup::<G>::default();
-        let og_secret = self.secret_shares[&self.ordinal];
+        let og_secret = self.secret_shares[self.ordinal];
 
         let mut all_refresh = true;
 
-        for (ordinal, round2data) in self.received_round2_data.iter() {
-            let participant_type = self.received_round1_data[ordinal].sender_type;
+        for (ordinal, round2data) in self.received_round2_data.iter().enumerate() {
+            let Some(round2data) = round2data else {
+                continue;
+            };
+            let round1data = self.received_round1_data[ordinal].as_ref().ok_or_else(|| {
+                Error::Round(format!(
+                    "Round {}: Sender has not sent round 1 data",
+                    Round::Three
+                ))
+            })?;
+            let participant_type = round1data.sender_type;
             all_refresh &= matches!(participant_type, ParticipantType::Refresh);
 
-            public_key.0 += self.received_round1_data[ordinal].feldman_commitments[0].0;
+            public_key.0 += round1data.feldman_commitments[0].0;
             secret_share.value.0 += round2data.secret_share.value.0;
         }
 

@@ -765,7 +765,8 @@ where
     for participant in participants.iter() {
         let round1_data: Vec<Round1Data<G>> = participant
             .received_round1_data()
-            .values()
+            .iter()
+            .flatten()
             .cloned()
             .collect();
         assert!(
