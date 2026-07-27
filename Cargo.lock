@@ -446,7 +446,7 @@ checksum = "64cd1e32ddd350061ae6edb1b082d7c54915b5c672c389143b9a63403a109f24"
 
 [[package]]
 name = "frost-dkg"
-version = "0.6.0-rc4"
+version = "0.6.0-rc5"
 dependencies = [
  "bls12_381_plus",
  "blstrs_plus",
