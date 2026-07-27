@@ -48,7 +48,7 @@ where
             sender_ordinal: self.ordinal,
             sender_id: self.id,
             sender_type: self.participant_impl.get_type(),
-            secret_shares: self.secret_shares.clone(),
+            secret_shares: std::mem::take(&mut self.secret_shares),
             transcript_hash,
         }))
     }

@@ -32,7 +32,17 @@ where
             IdentifierPrimeField(G::Scalar::ZERO),
         );
         let mut public_key = ValueGroup::<G>::default();
-        let og_secret = self.secret_shares[self.ordinal];
+        let original_share = self
+            .received_round2_data
+            .get(self.ordinal)
+            .and_then(Option::as_ref)
+            .ok_or_else(|| {
+                Error::Round(format!(
+                    "Round {}: Self doesn't have round 2 data",
+                    Round::Three
+                ))
+            })?
+            .secret_share;
 
         let mut all_refresh = true;
 
@@ -60,7 +70,7 @@ where
             ));
         }
 
-        if secret_share.value == og_secret.value {
+        if secret_share.value == original_share.value {
             return Err(Error::Round(format!(
                 "Round {}: The resulting secret key share is invalid",
                 Round::Three
