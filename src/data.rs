@@ -138,6 +138,68 @@ where
     }
 }
 
+/// The completed output of a DKG participant.
+///
+/// This type owns the participant's final result and intentionally does not
+/// implement [`Clone`] to avoid accidentally duplicating secret share material.
+pub struct DkgOutput<G>
+where
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
+    G::Scalar: ScalarHash,
+{
+    pub(crate) secret_share: SecretShare<G::Scalar>,
+    pub(crate) public_key: G,
+    pub(crate) feldman_verifiers: Vec<ShareVerifierGroup<G>>,
+    pub(crate) participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+    pub(crate) transcript_hash: [u8; 32],
+}
+
+impl<G> fmt::Debug for DkgOutput<G>
+where
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
+    G::Scalar: ScalarHash,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DkgOutput")
+            .field("public_key", &self.public_key)
+            .field("feldman_verifiers", &self.feldman_verifiers)
+            .field("participant_ids", &self.participant_ids)
+            .field("transcript_hash", &self.transcript_hash)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<G> DkgOutput<G>
+where
+    G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
+    G::Scalar: ScalarHash,
+{
+    /// The participant's final secret share.
+    pub fn secret_share(&self) -> SecretShare<G::Scalar> {
+        self.secret_share
+    }
+
+    /// The public key produced by the DKG.
+    pub fn public_key(&self) -> G {
+        self.public_key
+    }
+
+    /// The participant's Feldman verifiers.
+    pub fn feldman_verifiers(&self) -> &[ShareVerifierGroup<G>] {
+        &self.feldman_verifiers
+    }
+
+    /// The participants included in the completed DKG.
+    pub fn participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        &self.participant_ids
+    }
+
+    /// The final protocol transcript hash.
+    pub fn transcript_hash(&self) -> [u8; 32] {
+        self.transcript_hash
+    }
+}
+
 /// The round output generator
 #[derive(Debug, Clone)]
 pub enum RoundOutputGenerator<G>

@@ -319,6 +319,15 @@ mod tests {
                 .expect("participant has public key"),
             expected_pk
         );
+
+        let participant: Box<dyn AnyParticipant<k256::ProjectivePoint>> =
+            Box::new(participants.pop().expect("participant exists"));
+        let output = participant.into_output().expect("completed DKG output");
+        assert_eq!(output.public_key(), expected_pk);
+        assert_eq!(output.participant_ids().len(), LIMIT);
+        assert_eq!(output.feldman_verifiers().len(), THRESHOLD);
+        assert_eq!(*output.secret_share().identifier, k256::Scalar::from(3u64));
+        assert!(!format!("{output:?}").contains("secret_share"));
     }
 
     #[test]

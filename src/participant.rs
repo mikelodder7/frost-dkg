@@ -338,6 +338,37 @@ where
         &self.received_round2_data
     }
 
+    /// The verifying share used by this participant.
+    pub fn verifying_share(&self) -> G {
+        self.verifying_share
+    }
+
+    /// The final transcript hash over received protocol messages.
+    pub fn final_transcript_hash(&self) -> [u8; 32] {
+        get_final_transcript_hash(&self.received_round1_data, &self.received_round2_data)
+    }
+
+    /// Consume a completed participant and return its final DKG output.
+    ///
+    /// Consuming the participant avoids cloning its secret share.
+    pub fn into_output(self) -> DkgResult<DkgOutput<G>> {
+        if !self.completed {
+            return Err(Error::Round(
+                "Protocol is not complete; no output is available".to_string(),
+            ));
+        }
+
+        let transcript_hash =
+            get_final_transcript_hash(&self.received_round1_data, &self.received_round2_data);
+        Ok(DkgOutput {
+            secret_share: self.secret_share,
+            public_key: self.public_key.0,
+            feldman_verifiers: self.feldman_verifiers,
+            participant_ids: self.valid_participant_ids,
+            transcript_hash,
+        })
+    }
+
     /// The ordinal index of this participant.
     #[deprecated(since = "0.6.0", note = "use `ordinal` instead")]
     pub fn get_ordinal(&self) -> usize {
@@ -586,6 +617,8 @@ where
     fn receive(&mut self, data: &[u8]) -> DkgResult<()>;
     /// Run the next round in the protocol after receiving data from other participants
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>>;
+    /// Consume a completed participant and return its final DKG output.
+    fn into_output(self: Box<Self>) -> DkgResult<DkgOutput<G>>;
 
     /// Get the ordinal index of this participant.
     #[deprecated(since = "0.6.0", note = "use `ordinal` instead")]
@@ -744,6 +777,10 @@ where
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         self.run()
     }
+
+    fn into_output(self: Box<Self>) -> DkgResult<DkgOutput<G>> {
+        (*self).into_output()
+    }
 }
 
 impl<G> AnyParticipant<G> for Participant<RefreshParticipantImpl<G>, G>
@@ -818,6 +855,10 @@ where
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         self.run()
     }
+
+    fn into_output(self: Box<Self>) -> DkgResult<DkgOutput<G>> {
+        (*self).into_output()
+    }
 }
 
 fn get_final_transcript_hash<G>(
@@ -888,6 +929,25 @@ mod tests {
         assert!(!debug.contains("secret_share"));
         assert!(!debug.contains("secret_shares"));
         assert!(!debug.contains("received_round2_data"));
+    }
+
+    #[test]
+    fn output_is_unavailable_before_completion() {
+        let parameters = Parameters::new(
+            NonZeroUsize::new(2).expect("threshold is non-zero"),
+            NonZeroUsize::new(2).expect("limit is non-zero"),
+            None,
+            None,
+        );
+        let participant = SecretParticipant::<ProjectivePoint>::new_secret(
+            IdentifierPrimeField::ONE,
+            &parameters,
+        )
+        .expect("create participant");
+
+        let result = participant.into_output();
+
+        assert!(matches!(result, Err(Error::Round(message)) if message.contains("not complete")));
     }
 
     #[test]
