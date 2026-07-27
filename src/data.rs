@@ -311,6 +311,21 @@ impl<F: ScalarHash> OutboundMessages<F> {
         &self.messages
     }
 
+    /// The number of transport-aware messages in this batch.
+    pub fn len(&self) -> usize {
+        self.messages.len()
+    }
+
+    /// Whether this batch contains no messages.
+    pub fn is_empty(&self) -> bool {
+        self.messages.is_empty()
+    }
+
+    /// Iterate over the transport-aware messages in this batch.
+    pub fn iter(&self) -> std::slice::Iter<'_, OutboundMessage<F>> {
+        self.messages.iter()
+    }
+
     /// Expand broadcasts into participant-targeted messages.
     ///
     /// This is useful for transports that do not provide native broadcast.
@@ -333,6 +348,24 @@ impl<F: ScalarHash> OutboundMessages<F> {
             }
         }
         outputs
+    }
+}
+
+impl<F: ScalarHash> IntoIterator for OutboundMessages<F> {
+    type Item = OutboundMessage<F>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.messages.into_iter()
+    }
+}
+
+impl<'a, F: ScalarHash> IntoIterator for &'a OutboundMessages<F> {
+    type Item = &'a OutboundMessage<F>;
+    type IntoIter = std::slice::Iter<'a, OutboundMessage<F>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

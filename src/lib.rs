@@ -431,15 +431,16 @@ mod tests {
             for batch in batches {
                 match round {
                     Round::One => {
-                        assert_eq!(batch.messages().len(), 1);
+                        assert_eq!(batch.len(), 1);
+                        assert!(!batch.is_empty());
                         assert!(matches!(
                             batch.messages()[0].destination(),
                             MessageDestination::Broadcast
                         ));
                     }
                     Round::Two => {
-                        assert_eq!(batch.messages().len(), LIMIT - 1);
-                        assert!(batch.messages().iter().all(|message| matches!(
+                        assert_eq!(batch.len(), LIMIT - 1);
+                        assert!((&batch).into_iter().all(|message| matches!(
                             message.destination(),
                             MessageDestination::Direct { .. }
                         )));
