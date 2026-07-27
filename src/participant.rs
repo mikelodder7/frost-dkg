@@ -262,12 +262,12 @@ where
     }
 
     /// The ordinal index of this participant
-    pub fn get_ordinal(&self) -> usize {
+    pub fn ordinal(&self) -> usize {
         self.ordinal
     }
 
-    /// The identifier associated with this secret_participant
-    pub fn get_id(&self) -> IdentifierPrimeField<G::Scalar> {
+    /// The identifier associated with this participant
+    pub fn id(&self) -> IdentifierPrimeField<G::Scalar> {
         self.id
     }
 
@@ -277,24 +277,24 @@ where
     }
 
     /// Return the current round
-    pub fn get_round(&self) -> Round {
+    pub fn round(&self) -> Round {
         self.round
     }
 
     /// Return the set threshold
-    pub fn get_threshold(&self) -> usize {
+    pub fn threshold(&self) -> usize {
         self.threshold
     }
 
     /// Return the set limit
-    pub fn get_limit(&self) -> usize {
+    pub fn limit(&self) -> usize {
         self.limit
     }
 
     /// Computed secret share.
     /// This value is useless until at least 2 rounds have been run
     /// so [`None`] is returned until completion
-    pub fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
+    pub fn secret_share(&self) -> Option<SecretShare<G::Scalar>> {
         if self.completed {
             Some(self.secret_share)
         } else {
@@ -305,7 +305,7 @@ where
     /// Computed public key
     /// This value is useless until all rounds have been run
     /// so [`None`] is returned until completion
-    pub fn get_public_key(&self) -> Option<G> {
+    pub fn public_key(&self) -> Option<G> {
         if self.completed {
             Some(*self.public_key)
         } else {
@@ -314,28 +314,100 @@ where
     }
 
     /// Return the list of all participants that started the protocol
-    pub fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    pub fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
         &self.all_participant_ids
     }
 
     /// Return the list of valid participant ids
-    pub fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    pub fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
         &self.valid_participant_ids
     }
 
     /// Return the feldman verifiers
-    pub fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
+    pub fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
         self.feldman_verifiers.clone()
     }
 
     /// Get the received round 1 data so far
-    pub fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+    pub fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
         &self.received_round1_data
     }
 
     /// Get the received round 2 data so far
-    pub fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+    pub fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
         &self.received_round2_data
+    }
+
+    /// The ordinal index of this participant.
+    #[deprecated(since = "0.6.0", note = "use `ordinal` instead")]
+    pub fn get_ordinal(&self) -> usize {
+        self.ordinal()
+    }
+
+    /// The identifier associated with this participant.
+    #[deprecated(since = "0.6.0", note = "use `id` instead")]
+    pub fn get_id(&self) -> IdentifierPrimeField<G::Scalar> {
+        self.id()
+    }
+
+    /// Return the current round.
+    #[deprecated(since = "0.6.0", note = "use `round` instead")]
+    pub fn get_round(&self) -> Round {
+        self.round()
+    }
+
+    /// Return the set threshold.
+    #[deprecated(since = "0.6.0", note = "use `threshold` instead")]
+    pub fn get_threshold(&self) -> usize {
+        self.threshold()
+    }
+
+    /// Return the set limit.
+    #[deprecated(since = "0.6.0", note = "use `limit` instead")]
+    pub fn get_limit(&self) -> usize {
+        self.limit()
+    }
+
+    /// Computed secret share, if the protocol is complete.
+    #[deprecated(since = "0.6.0", note = "use `secret_share` instead")]
+    pub fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
+        self.secret_share()
+    }
+
+    /// Computed public key, if the protocol is complete.
+    #[deprecated(since = "0.6.0", note = "use `public_key` instead")]
+    pub fn get_public_key(&self) -> Option<G> {
+        self.public_key()
+    }
+
+    /// Return the list of all participants that started the protocol.
+    #[deprecated(since = "0.6.0", note = "use `all_participant_ids` instead")]
+    pub fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        self.all_participant_ids()
+    }
+
+    /// Return the list of valid participant IDs.
+    #[deprecated(since = "0.6.0", note = "use `valid_participant_ids` instead")]
+    pub fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        self.valid_participant_ids()
+    }
+
+    /// Return the Feldman verifiers.
+    #[deprecated(since = "0.6.0", note = "use `feldman_verifiers` instead")]
+    pub fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
+        self.feldman_verifiers()
+    }
+
+    /// Get the received round 1 data so far.
+    #[deprecated(since = "0.6.0", note = "use `received_round1_data` instead")]
+    pub fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+        self.received_round1_data()
+    }
+
+    /// Get the received round 2 data so far.
+    #[deprecated(since = "0.6.0", note = "use `received_round2_data` instead")]
+    pub fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+        self.received_round2_data()
     }
 
     /// Receive data from another participant
@@ -480,40 +552,124 @@ where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// Get the ordinal index of this participant
-    fn get_ordinal(&self) -> usize;
-    /// Get the identifier associated with this participant
-    fn get_id(&self) -> IdentifierPrimeField<G::Scalar>;
-    /// Get the threshold
-    fn get_threshold(&self) -> usize;
-    /// Get the limit
-    fn get_limit(&self) -> usize;
-    /// Get the current round
-    fn get_round(&self) -> Round;
-    /// Get the secret share if completed
-    fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>>;
-    /// Get the public key if completed
-    fn get_public_key(&self) -> Option<G>;
-    /// Get the valid participant ids from the last round
-    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
-    /// Get all participant ids that started the protocol
-    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
-    /// Return the feldman verifiers
-    fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>>;
-    /// Get the received round 1 data so far
-    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>>;
-    /// Get the received round 2 data so far
-    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>>;
-    /// Get the verifying share
-    fn get_verifying_share(&self) -> G;
-    /// Get the final transcript hash
-    fn get_final_transcript_hash(&self) -> [u8; 32];
+    /// The ordinal index of this participant.
+    fn ordinal(&self) -> usize;
+    /// The identifier associated with this participant.
+    fn id(&self) -> IdentifierPrimeField<G::Scalar>;
+    /// The threshold.
+    fn threshold(&self) -> usize;
+    /// The participant limit.
+    fn limit(&self) -> usize;
+    /// The current round.
+    fn round(&self) -> Round;
+    /// The secret share, if the protocol is complete.
+    fn secret_share(&self) -> Option<SecretShare<G::Scalar>>;
+    /// The public key, if the protocol is complete.
+    fn public_key(&self) -> Option<G>;
+    /// The valid participant IDs from the last round.
+    fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
+    /// All participant IDs that started the protocol.
+    fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
+    /// The Feldman verifiers.
+    fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>>;
+    /// The received round 1 data so far.
+    fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>>;
+    /// The received round 2 data so far.
+    fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>>;
+    /// The verifying share.
+    fn verifying_share(&self) -> G;
+    /// The final transcript hash.
+    fn final_transcript_hash(&self) -> [u8; 32];
     /// Check if the participant is completed
     fn completed(&self) -> bool;
     /// Receive data from another participant
     fn receive(&mut self, data: &[u8]) -> DkgResult<()>;
     /// Run the next round in the protocol after receiving data from other participants
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>>;
+
+    /// Get the ordinal index of this participant.
+    #[deprecated(since = "0.6.0", note = "use `ordinal` instead")]
+    fn get_ordinal(&self) -> usize {
+        self.ordinal()
+    }
+
+    /// Get the identifier associated with this participant.
+    #[deprecated(since = "0.6.0", note = "use `id` instead")]
+    fn get_id(&self) -> IdentifierPrimeField<G::Scalar> {
+        self.id()
+    }
+
+    /// Get the threshold.
+    #[deprecated(since = "0.6.0", note = "use `threshold` instead")]
+    fn get_threshold(&self) -> usize {
+        self.threshold()
+    }
+
+    /// Get the limit.
+    #[deprecated(since = "0.6.0", note = "use `limit` instead")]
+    fn get_limit(&self) -> usize {
+        self.limit()
+    }
+
+    /// Get the current round.
+    #[deprecated(since = "0.6.0", note = "use `round` instead")]
+    fn get_round(&self) -> Round {
+        self.round()
+    }
+
+    /// Get the secret share if completed.
+    #[deprecated(since = "0.6.0", note = "use `secret_share` instead")]
+    fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
+        self.secret_share()
+    }
+
+    /// Get the public key if completed.
+    #[deprecated(since = "0.6.0", note = "use `public_key` instead")]
+    fn get_public_key(&self) -> Option<G> {
+        self.public_key()
+    }
+
+    /// Get the valid participant IDs from the last round.
+    #[deprecated(since = "0.6.0", note = "use `valid_participant_ids` instead")]
+    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        self.valid_participant_ids()
+    }
+
+    /// Get all participant IDs that started the protocol.
+    #[deprecated(since = "0.6.0", note = "use `all_participant_ids` instead")]
+    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+        self.all_participant_ids()
+    }
+
+    /// Return the Feldman verifiers.
+    #[deprecated(since = "0.6.0", note = "use `feldman_verifiers` instead")]
+    fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
+        self.feldman_verifiers()
+    }
+
+    /// Get the received round 1 data so far.
+    #[deprecated(since = "0.6.0", note = "use `received_round1_data` instead")]
+    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+        self.received_round1_data()
+    }
+
+    /// Get the received round 2 data so far.
+    #[deprecated(since = "0.6.0", note = "use `received_round2_data` instead")]
+    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+        self.received_round2_data()
+    }
+
+    /// Get the verifying share.
+    #[deprecated(since = "0.6.0", note = "use `verifying_share` instead")]
+    fn get_verifying_share(&self) -> G {
+        self.verifying_share()
+    }
+
+    /// Get the final transcript hash.
+    #[deprecated(since = "0.6.0", note = "use `final_transcript_hash` instead")]
+    fn get_final_transcript_hash(&self) -> [u8; 32] {
+        self.final_transcript_hash()
+    }
 }
 
 impl<G> AnyParticipant<G> for Participant<SecretParticipantImpl<G>, G>
@@ -521,59 +677,59 @@ where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    fn get_ordinal(&self) -> usize {
+    fn ordinal(&self) -> usize {
         self.ordinal
     }
 
-    fn get_id(&self) -> IdentifierPrimeField<G::Scalar> {
+    fn id(&self) -> IdentifierPrimeField<G::Scalar> {
         self.id
     }
 
-    fn get_threshold(&self) -> usize {
+    fn threshold(&self) -> usize {
         self.threshold
     }
 
-    fn get_limit(&self) -> usize {
+    fn limit(&self) -> usize {
         self.limit
     }
 
-    fn get_round(&self) -> Round {
+    fn round(&self) -> Round {
         self.round
     }
 
-    fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
-        self.get_secret_share()
+    fn secret_share(&self) -> Option<SecretShare<G::Scalar>> {
+        self.secret_share()
     }
 
-    fn get_public_key(&self) -> Option<G> {
-        self.get_public_key()
+    fn public_key(&self) -> Option<G> {
+        self.public_key()
     }
 
-    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
         &self.valid_participant_ids
     }
 
-    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
         &self.all_participant_ids
     }
 
-    fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
-        self.get_feldman_verifiers()
+    fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
+        self.feldman_verifiers()
     }
 
-    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+    fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
         &self.received_round1_data
     }
 
-    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+    fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
         &self.received_round2_data
     }
 
-    fn get_verifying_share(&self) -> G {
+    fn verifying_share(&self) -> G {
         self.verifying_share
     }
 
-    fn get_final_transcript_hash(&self) -> [u8; 32] {
+    fn final_transcript_hash(&self) -> [u8; 32] {
         get_final_transcript_hash(&self.received_round1_data, &self.received_round2_data)
     }
 
@@ -595,59 +751,59 @@ where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    fn get_ordinal(&self) -> usize {
+    fn ordinal(&self) -> usize {
         self.ordinal
     }
 
-    fn get_id(&self) -> IdentifierPrimeField<G::Scalar> {
+    fn id(&self) -> IdentifierPrimeField<G::Scalar> {
         self.id
     }
 
-    fn get_threshold(&self) -> usize {
+    fn threshold(&self) -> usize {
         self.threshold
     }
 
-    fn get_limit(&self) -> usize {
+    fn limit(&self) -> usize {
         self.limit
     }
 
-    fn get_round(&self) -> Round {
+    fn round(&self) -> Round {
         self.round
     }
 
-    fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
-        self.get_secret_share()
+    fn secret_share(&self) -> Option<SecretShare<G::Scalar>> {
+        self.secret_share()
     }
 
-    fn get_public_key(&self) -> Option<G> {
-        self.get_public_key()
+    fn public_key(&self) -> Option<G> {
+        self.public_key()
     }
 
-    fn get_valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn valid_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
         &self.valid_participant_ids
     }
 
-    fn get_all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
+    fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>> {
         &self.all_participant_ids
     }
 
-    fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
-        self.get_feldman_verifiers()
+    fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
+        self.feldman_verifiers()
     }
 
-    fn get_received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
+    fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
         &self.received_round1_data
     }
 
-    fn get_received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
+    fn received_round2_data(&self) -> &BTreeMap<usize, Round2Data<G::Scalar>> {
         &self.received_round2_data
     }
 
-    fn get_verifying_share(&self) -> G {
+    fn verifying_share(&self) -> G {
         self.verifying_share
     }
 
-    fn get_final_transcript_hash(&self) -> [u8; 32] {
+    fn final_transcript_hash(&self) -> [u8; 32] {
         get_final_transcript_hash(&self.received_round1_data, &self.received_round2_data)
     }
 
