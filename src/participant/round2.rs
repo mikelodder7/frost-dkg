@@ -110,13 +110,12 @@ where
             })?;
 
         // verify the share
-        let input = self
-            .powers_of_i
-            .iter()
-            .copied()
-            .zip(round1_data.feldman_commitments.iter().map(|g| **g))
-            .collect::<Vec<(G::Scalar, G)>>();
-        let rhs = <G as SumOfProducts>::sum_of_products(&input);
+        let rhs = <G as SumOfProducts>::sum_of_products_iter(
+            self.powers_of_i
+                .iter()
+                .copied()
+                .zip(round1_data.feldman_commitments.iter().map(|g| **g)),
+        );
         let lhs = self.message_generator * data.secret_share.value.0;
         if !bool::from((lhs - rhs).is_identity()) {
             return Err(Error::Round(format!(
