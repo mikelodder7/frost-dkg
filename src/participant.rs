@@ -363,8 +363,8 @@ where
     }
 
     /// Return the feldman verifiers
-    pub fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
-        self.feldman_verifiers.clone()
+    pub fn feldman_verifiers(&self) -> &[ShareVerifierGroup<G>] {
+        &self.feldman_verifiers
     }
 
     /// Get the received round 1 data so far
@@ -465,7 +465,7 @@ where
     /// Return the Feldman verifiers.
     #[deprecated(since = "0.6.0", note = "use `feldman_verifiers` instead")]
     pub fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
-        self.feldman_verifiers()
+        self.feldman_verifiers().to_vec()
     }
 
     /// Get the received round 1 data so far.
@@ -640,7 +640,7 @@ where
     /// All participant IDs that started the protocol.
     fn all_participant_ids(&self) -> &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>;
     /// The Feldman verifiers.
-    fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>>;
+    fn feldman_verifiers(&self) -> &[ShareVerifierGroup<G>];
     /// The received round 1 data so far.
     fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>>;
     /// The received round 2 data so far.
@@ -717,7 +717,7 @@ where
     /// Return the Feldman verifiers.
     #[deprecated(since = "0.6.0", note = "use `feldman_verifiers` instead")]
     fn get_feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
-        self.feldman_verifiers()
+        self.feldman_verifiers().to_vec()
     }
 
     /// Get the received round 1 data so far.
@@ -787,8 +787,8 @@ where
         &self.all_participant_ids
     }
 
-    fn feldman_verifiers(&self) -> Vec<ShareVerifierGroup<G>> {
-        self.feldman_verifiers()
+    fn feldman_verifiers(&self) -> &[ShareVerifierGroup<G>] {
+        &self.feldman_verifiers
     }
 
     fn received_round1_data(&self) -> &BTreeMap<usize, Round1Data<G>> {
@@ -888,6 +888,7 @@ mod tests {
         )
         .expect("create participant");
 
+        assert_eq!(participant.feldman_verifiers().len(), 2);
         let debug = format!("{participant:?}");
 
         assert!(!debug.contains("original_secret"));
