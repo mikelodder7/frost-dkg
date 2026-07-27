@@ -134,7 +134,7 @@ where
                 participants[0].id(),
                 &participants[0].secret_share().unwrap(),
                 &parameters,
-                &pids[..participants.len()],
+                &ReconstructionSet::new(&pids[..participants.len()]).unwrap(),
             )
             .unwrap(),
         ),
@@ -143,7 +143,7 @@ where
                 participants[1].id(),
                 &participants[1].secret_share().unwrap(),
                 &parameters,
-                &pids[..participants.len()],
+                &ReconstructionSet::new(&pids[..participants.len()]).unwrap(),
             )
             .unwrap(),
         ),
@@ -152,7 +152,7 @@ where
                 participants[2].id(),
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &pids[..participants.len()],
+                &ReconstructionSet::new(&pids[..participants.len()]).unwrap(),
             )
             .unwrap(),
         ),
@@ -161,7 +161,7 @@ where
                 participants[3].id(),
                 &participants[3].secret_share().unwrap(),
                 &parameters,
-                &pids[..participants.len()],
+                &ReconstructionSet::new(&pids[..participants.len()]).unwrap(),
             )
             .unwrap(),
         ),
@@ -170,7 +170,7 @@ where
                 participants[4].id(),
                 &participants[4].secret_share().unwrap(),
                 &parameters,
-                &pids[..participants.len()],
+                &ReconstructionSet::new(&pids[..participants.len()]).unwrap(),
             )
             .unwrap(),
         ),
@@ -235,7 +235,7 @@ where
                 share_ids[0],
                 &participants[0].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -244,7 +244,7 @@ where
                 share_ids[1],
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -253,7 +253,7 @@ where
                 share_ids[2],
                 &participants[4].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -319,7 +319,7 @@ where
                 share_ids[0],
                 &participants[1].secret_share().unwrap(),
                 &parameters,
-                &share_ids[..3],
+                &ReconstructionSet::new(&share_ids[..3]).unwrap(),
             )
             .unwrap(),
         ),
@@ -328,7 +328,7 @@ where
                 share_ids[1],
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &share_ids[..3],
+                &ReconstructionSet::new(&share_ids[..3]).unwrap(),
             )
             .unwrap(),
         ),
@@ -337,7 +337,7 @@ where
                 share_ids[2],
                 &participants[3].secret_share().unwrap(),
                 &parameters,
-                &share_ids[..3],
+                &ReconstructionSet::new(&share_ids[..3]).unwrap(),
             )
             .unwrap(),
         ),
@@ -404,7 +404,7 @@ where
                 share_ids[0],
                 &participants[1].secret_share().unwrap(),
                 &parameters,
-                &share_ids[..3],
+                &ReconstructionSet::new(&share_ids[..3]).unwrap(),
             )
             .unwrap(),
         ),
@@ -413,7 +413,7 @@ where
                 share_ids[1],
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &share_ids[..3],
+                &ReconstructionSet::new(&share_ids[..3]).unwrap(),
             )
             .unwrap(),
         ),
@@ -422,7 +422,7 @@ where
                 share_ids[2],
                 &participants[4].secret_share().unwrap(),
                 &parameters,
-                &share_ids[..3],
+                &ReconstructionSet::new(&share_ids[..3]).unwrap(),
             )
             .unwrap(),
         ),
@@ -556,7 +556,7 @@ where
         Box::new(
             RefreshParticipant::<G>::new_refresh(
                 participants[0].id(),
-                participants[0].secret_share().map(|s| s.value.0),
+                participants[0].secret_share().as_ref(),
                 &parameters,
             )
             .unwrap(),
@@ -564,7 +564,7 @@ where
         Box::new(
             RefreshParticipant::<G>::new_refresh(
                 participants[1].id(),
-                participants[1].secret_share().map(|s| s.value.0),
+                participants[1].secret_share().as_ref(),
                 &parameters,
             )
             .unwrap(),
@@ -572,7 +572,7 @@ where
         Box::new(
             RefreshParticipant::<G>::new_refresh(
                 participants[2].id(),
-                participants[2].secret_share().map(|s| s.value.0),
+                participants[2].secret_share().as_ref(),
                 &parameters,
             )
             .unwrap(),
@@ -580,7 +580,7 @@ where
         Box::new(
             RefreshParticipant::<G>::new_refresh(
                 participants[3].id(),
-                participants[3].secret_share().map(|s| s.value.0),
+                participants[3].secret_share().as_ref(),
                 &parameters,
             )
             .unwrap(),
@@ -588,7 +588,7 @@ where
         Box::new(
             RefreshParticipant::<G>::new_refresh(
                 participants[4].id(),
-                participants[4].secret_share().map(|s| s.value.0),
+                participants[4].secret_share().as_ref(),
                 &parameters,
             )
             .unwrap(),
@@ -814,7 +814,7 @@ where
                 participants[0].id(),
                 &participants[0].secret_share().unwrap(),
                 &parameters,
-                &pids,
+                &ReconstructionSet::new(&pids).unwrap(),
             )
             .unwrap(),
         ),
@@ -823,7 +823,7 @@ where
                 participants[1].id(),
                 &participants[1].secret_share().unwrap(),
                 &parameters,
-                &pids,
+                &ReconstructionSet::new(&pids).unwrap(),
             )
             .unwrap(),
         ),
@@ -832,7 +832,7 @@ where
                 participants[2].id(),
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &pids,
+                &ReconstructionSet::new(&pids).unwrap(),
             )
             .unwrap(),
         ),
@@ -841,7 +841,7 @@ where
                 participants[3].id(),
                 &participants[3].secret_share().unwrap(),
                 &parameters,
-                &pids,
+                &ReconstructionSet::new(&pids).unwrap(),
             )
             .unwrap(),
         ),
@@ -850,7 +850,7 @@ where
                 participants[4].id(),
                 &participants[4].secret_share().unwrap(),
                 &parameters,
-                &pids,
+                &ReconstructionSet::new(&pids).unwrap(),
             )
             .unwrap(),
         ),
@@ -927,7 +927,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(1)),
                 &participants[0].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -936,7 +936,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(2)),
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -945,7 +945,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(3)),
                 &participants[3].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -1007,7 +1007,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(1)),
                 &participants[1].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -1016,7 +1016,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(2)),
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -1025,7 +1025,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(3)),
                 &participants[3].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -1092,7 +1092,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(1)),
                 &participants[1].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -1101,7 +1101,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(2)),
                 &participants[2].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),
@@ -1110,7 +1110,7 @@ where
                 IdentifierPrimeField(G::Scalar::from(3)),
                 &participants[4].secret_share().unwrap(),
                 &parameters,
-                &share_ids,
+                &ReconstructionSet::new(&share_ids).unwrap(),
             )
             .unwrap(),
         ),

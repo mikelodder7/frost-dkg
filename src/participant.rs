@@ -29,6 +29,47 @@ pub type SecretShare<F> = DefaultShare<IdentifierPrimeField<F>, IdentifierPrimeF
 /// The inner feldman share verifiers
 pub type FeldmanShareVerifier<G> = ShareVerifierGroup<G>;
 
+/// A validated set of participant identifiers used to reconstruct a secret.
+#[derive(Copy, Clone, Debug)]
+pub struct ReconstructionSet<'a, F: ScalarHash> {
+    identifiers: &'a [IdentifierPrimeField<F>],
+}
+
+impl<'a, F: ScalarHash> ReconstructionSet<'a, F> {
+    /// Validate participant identifiers for secret reconstruction.
+    pub fn new(identifiers: &'a [IdentifierPrimeField<F>]) -> DkgResult<Self> {
+        if identifiers.len() < 2 {
+            return Err(Error::Initialization(
+                "A reconstruction set requires at least 2 participant identifiers".to_string(),
+            ));
+        }
+        if identifiers.iter().any(|id| bool::from(id.is_zero())) {
+            return Err(Error::Initialization(
+                "Reconstruction participant identifiers cannot be zero".to_string(),
+            ));
+        }
+        let unique_identifiers = identifiers
+            .iter()
+            .map(|id| id.0.to_repr().as_ref().to_vec())
+            .collect::<BTreeSet<_>>();
+        if unique_identifiers.len() != identifiers.len() {
+            return Err(Error::Initialization(
+                "Reconstruction participant identifiers must be unique".to_string(),
+            ));
+        }
+        Ok(Self { identifiers })
+    }
+
+    /// The validated participant identifiers.
+    pub fn identifiers(&self) -> &[IdentifierPrimeField<F>] {
+        self.identifiers
+    }
+
+    fn contains(&self, identifier: &IdentifierPrimeField<F>) -> bool {
+        self.identifiers.contains(identifier)
+    }
+}
+
 /// Participant implementation
 pub trait ParticipantImpl<G>
 where
@@ -116,9 +157,14 @@ where
         new_identifier: IdentifierPrimeField<G::Scalar>,
         old_share: &SecretShare<G::Scalar>,
         parameters: &Parameters<G>,
-        shares_ids: &[IdentifierPrimeField<G::Scalar>],
+        reconstruction_set: &ReconstructionSet<'_, G::Scalar>,
     ) -> DkgResult<Self> {
-        let secret = *old_share.value * *Self::lagrange(old_share, shares_ids)?;
+        if !reconstruction_set.contains(&old_share.identifier) {
+            return Err(Error::Initialization(
+                "The old share is not included in the reconstruction set".to_string(),
+            ));
+        }
+        let secret = *old_share.value * *Self::lagrange(old_share, reconstruction_set);
         Self::initialize(
             new_identifier,
             parameters,
@@ -139,10 +185,17 @@ where
     /// that do possess a valid share of the original secret
     pub fn new_refresh(
         id: IdentifierPrimeField<G::Scalar>,
-        existing_share: Option<G::Scalar>,
+        existing_share: Option<&SecretShare<G::Scalar>>,
         parameters: &Parameters<G>,
     ) -> DkgResult<Self> {
-        let secret = existing_share.unwrap_or_else(|| G::Scalar::random(&mut rand::rng()));
+        if existing_share.is_some_and(|share| share.identifier != id) {
+            return Err(Error::Initialization(
+                "The existing share identifier does not match the refresh participant".to_string(),
+            ));
+        }
+        let secret = existing_share
+            .map(|share| share.value.0)
+            .unwrap_or_else(|| G::Scalar::random(&mut rand::rng()));
         Self::initialize(
             id,
             parameters,
@@ -499,23 +552,11 @@ where
 
     pub(crate) fn lagrange(
         share: &SecretShare<G::Scalar>,
-        shares_ids: &[IdentifierPrimeField<G::Scalar>],
-    ) -> DkgResult<ValuePrimeField<G::Scalar>> {
-        if shares_ids
-            .iter()
-            .map(|id| id.0.to_repr().as_ref().to_vec())
-            .collect::<BTreeSet<_>>()
-            .len()
-            != shares_ids.len()
-        {
-            return Err(Error::Initialization(
-                "participant identifiers must be unique".to_string(),
-            ));
-        }
-
+        reconstruction_set: &ReconstructionSet<'_, G::Scalar>,
+    ) -> ValuePrimeField<G::Scalar> {
         let mut num = G::Scalar::ONE;
         let mut den = G::Scalar::ONE;
-        for &x_j in shares_ids.iter() {
+        for &x_j in reconstruction_set.identifiers() {
             if x_j == share.identifier {
                 continue;
             }
@@ -523,10 +564,10 @@ where
             den *= *x_j - *share.identifier;
         }
 
-        let den_inverse = Option::<G::Scalar>::from(den.invert()).ok_or_else(|| {
-            Error::Initialization("participant identifiers must be unique".to_string())
-        })?;
-        Ok(IdentifierPrimeField(num * den_inverse))
+        // The validated reconstruction set contains unique identifiers,
+        // including the share identifier, so this denominator is nonzero.
+        let den_inverse = den.invert().unwrap_or(G::Scalar::ZERO);
+        IdentifierPrimeField(num * den_inverse)
     }
 }
 
@@ -955,18 +996,65 @@ mod tests {
     }
 
     #[test]
-    fn lagrange_rejects_duplicate_identifiers() {
+    fn reconstruction_set_rejects_duplicate_identifiers() {
         let identifier = IdentifierPrimeField(Scalar::ONE);
-        let share =
-            SecretShare::with_identifier_and_value(identifier, IdentifierPrimeField(Scalar::ONE));
         let identifiers = [identifier, identifier];
 
-        let result =
-            Participant::<SecretParticipantImpl<ProjectivePoint>, ProjectivePoint>::lagrange(
-                &share,
-                &identifiers,
-            );
+        let result = ReconstructionSet::new(&identifiers);
 
         assert!(matches!(result, Err(Error::Initialization(_))));
+    }
+
+    #[test]
+    fn refresh_rejects_a_share_with_a_different_identifier() {
+        let parameters = Parameters::new(
+            NonZeroUsize::new(2).expect("threshold is non-zero"),
+            NonZeroUsize::new(2).expect("limit is non-zero"),
+        )
+        .expect("valid parameters");
+        let share = SecretShare::with_identifier_and_value(
+            IdentifierPrimeField(Scalar::ONE),
+            IdentifierPrimeField(Scalar::ONE),
+        );
+
+        let result = RefreshParticipant::<ProjectivePoint>::new_refresh(
+            IdentifierPrimeField(Scalar::from(2u64)),
+            Some(&share),
+            &parameters,
+        );
+
+        assert!(
+            matches!(result, Err(Error::Initialization(message)) if message.contains("does not match"))
+        );
+    }
+
+    #[test]
+    fn resharing_rejects_a_share_missing_from_the_reconstruction_set() {
+        let parameters = Parameters::new(
+            NonZeroUsize::new(2).expect("threshold is non-zero"),
+            NonZeroUsize::new(3).expect("limit is non-zero"),
+        )
+        .expect("valid parameters");
+        let share = SecretShare::with_identifier_and_value(
+            IdentifierPrimeField(Scalar::ONE),
+            IdentifierPrimeField(Scalar::ONE),
+        );
+        let identifiers = [
+            IdentifierPrimeField(Scalar::from(2u64)),
+            IdentifierPrimeField(Scalar::from(3u64)),
+        ];
+        let reconstruction_set =
+            ReconstructionSet::new(&identifiers).expect("valid reconstruction set");
+
+        let result = SecretParticipant::<ProjectivePoint>::with_secret(
+            IdentifierPrimeField::ONE,
+            &share,
+            &parameters,
+            &reconstruction_set,
+        );
+
+        assert!(
+            matches!(result, Err(Error::Initialization(message)) if message.contains("not included"))
+        );
     }
 }

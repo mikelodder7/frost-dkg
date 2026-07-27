@@ -507,7 +507,7 @@ mod tests {
                 new_peer_ids[i],
                 &original_shares[i],
                 &parameters,
-                &original_peer_ids,
+                &ReconstructionSet::new(&original_peer_ids).expect("valid reconstruction set"),
             )
             .expect("create participant from existing share");
             participants.push(participant);

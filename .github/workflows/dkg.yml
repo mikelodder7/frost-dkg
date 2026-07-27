@@ -55,7 +55,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install cargo-careful
+      - uses: cargo-bins/cargo-binstall@v1.21.1
+      - run: cargo binstall --no-confirm cargo-careful
       - run: cargo careful test tests --release
         
   clippy:
@@ -92,7 +93,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install cargo-udeps
+      - uses: cargo-bins/cargo-binstall@v1.21.1
+      - run: cargo binstall --no-confirm cargo-udeps
       - run: cargo udeps --all-targets --all-features
 
   outdated:
@@ -100,7 +102,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install cargo-outdated
+      - uses: cargo-bins/cargo-binstall@v1.21.1
+      - run: cargo binstall --no-confirm cargo-outdated
       # sha2 0.10 is required by the BLS12-381 implementations while the
       # remaining curve implementations use sha2 0.11.
       - run: cargo outdated --root-deps-only --ignore sha2 --exit-code 1
@@ -110,5 +113,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install cargo-pants
+      - uses: cargo-bins/cargo-binstall@v1.21.1
+      - run: cargo binstall --no-confirm cargo-pants
       - run: cargo pants --loud --dev
