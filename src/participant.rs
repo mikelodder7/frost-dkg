@@ -46,7 +46,6 @@ where
 }
 
 /// A DKG participant FSM
-#[derive(Clone)]
 pub struct Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
@@ -87,12 +86,10 @@ where
             .field("threshold", &self.threshold)
             .field("limit", &self.limit)
             .field("round", &self.round)
+            .field("completed", &self.completed)
             .field("feldman_verifiers", &self.feldman_verifiers)
-            .field("secret_share", &self.secret_share)
             .field("public_key", &self.public_key)
             .field("powers_of_i", &self.powers_of_i)
-            .field("received_round1_data", &self.received_round1_data)
-            .field("received_round2_data", &self.received_round2_data)
             .finish()
     }
 }
@@ -493,8 +490,6 @@ where
     fn get_limit(&self) -> usize;
     /// Get the current round
     fn get_round(&self) -> Round;
-    /// Get the original secret
-    fn get_original_secret(&self) -> G::Scalar;
     /// Get the secret share if completed
     fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>>;
     /// Get the public key if completed
@@ -544,10 +539,6 @@ where
 
     fn get_round(&self) -> Round {
         self.round
-    }
-
-    fn get_original_secret(&self) -> G::Scalar {
-        self.original_secret
     }
 
     fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
@@ -622,10 +613,6 @@ where
 
     fn get_round(&self) -> Round {
         self.round
-    }
-
-    fn get_original_secret(&self) -> G::Scalar {
-        self.original_secret
     }
 
     fn get_secret_share(&self) -> Option<SecretShare<G::Scalar>> {
@@ -723,6 +710,28 @@ mod tests {
         assert!(
             matches!(result, Err(Error::InvalidMessage(message)) if message == "message is empty")
         );
+    }
+
+    #[test]
+    fn debug_redacts_secret_state() {
+        let parameters = Parameters::new(
+            NonZeroUsize::new(2).expect("threshold is non-zero"),
+            NonZeroUsize::new(2).expect("limit is non-zero"),
+            None,
+            None,
+        );
+        let participant = SecretParticipant::<ProjectivePoint>::new_secret(
+            IdentifierPrimeField::ONE,
+            &parameters,
+        )
+        .expect("create participant");
+
+        let debug = format!("{participant:?}");
+
+        assert!(!debug.contains("original_secret"));
+        assert!(!debug.contains("secret_share"));
+        assert!(!debug.contains("secret_shares"));
+        assert!(!debug.contains("received_round2_data"));
     }
 
     #[test]
