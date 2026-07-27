@@ -343,14 +343,17 @@ where
 
     /// Receive data from another participant
     pub fn receive(&mut self, data: &[u8]) -> DkgResult<()> {
-        let round = Round::try_from(data[0]).map_err(Error::Initialization)?;
+        let (&round, payload) = data
+            .split_first()
+            .ok_or_else(|| Error::InvalidMessage("message is empty".to_string()))?;
+        let round = Round::try_from(round).map_err(Error::InvalidMessage)?;
         match round {
             Round::One => {
-                let round1_payload = postcard::from_bytes::<Round1Data<G>>(&data[1..])?;
+                let round1_payload = postcard::from_bytes::<Round1Data<G>>(payload)?;
                 self.receive_round1data(round1_payload)
             }
             Round::Two => {
-                let round2_payload = postcard::from_bytes::<Round2Data<G::Scalar>>(&data[1..])?;
+                let round2_payload = postcard::from_bytes::<Round2Data<G::Scalar>>(payload)?;
                 self.receive_round2data(round2_payload)
             }
             _ => Err(Error::Round("Protocol is complete".to_string())),
@@ -698,7 +701,29 @@ where
 mod tests {
     use super::*;
     use k256::{ProjectivePoint, Scalar};
+    use std::num::NonZeroUsize;
     use vsss_rs::Share;
+
+    #[test]
+    fn receive_rejects_empty_message() {
+        let parameters = Parameters::new(
+            NonZeroUsize::new(2).expect("threshold is non-zero"),
+            NonZeroUsize::new(2).expect("limit is non-zero"),
+            None,
+            None,
+        );
+        let mut participant = SecretParticipant::<ProjectivePoint>::new_secret(
+            IdentifierPrimeField::ONE,
+            &parameters,
+        )
+        .expect("create participant");
+
+        let result = participant.receive(&[]);
+
+        assert!(
+            matches!(result, Err(Error::InvalidMessage(message)) if message == "message is empty")
+        );
+    }
 
     #[test]
     fn lagrange_rejects_duplicate_identifiers() {

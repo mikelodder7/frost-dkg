@@ -101,7 +101,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo install cargo-outdated
-      - run: cargo outdated --root-deps-only --exit-code 1
+      # sha2 0.10 is required by the BLS12-381 implementations while the
+      # remaining curve implementations use sha2 0.11.
+      - run: cargo outdated --root-deps-only --ignore sha2 --exit-code 1
 
   pants:
     runs-on: ubuntu-latest

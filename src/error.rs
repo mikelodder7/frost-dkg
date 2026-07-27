@@ -15,6 +15,9 @@ pub enum Error {
     /// Error during postcard serialization/deserialization.
     #[error("Postcard error: {0}")]
     Postcard(#[from] postcard::Error),
+    /// The received protocol message is malformed.
+    #[error("invalid protocol message: {0}")]
+    InvalidMessage(String),
     /// Error during participant initialization.
     #[error("error during participant initialization: {0}")]
     Initialization(String),
