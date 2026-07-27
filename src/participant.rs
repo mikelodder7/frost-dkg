@@ -9,7 +9,7 @@ use elliptic_curve::{Field, Group};
 use elliptic_curve_tools::SumOfProducts;
 use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 use vsss_rs::{
@@ -121,7 +121,7 @@ where
         parameters: &Parameters<G>,
         shares_ids: &[IdentifierPrimeField<G::Scalar>],
     ) -> DkgResult<Self> {
-        let secret = *old_share.value * *Self::lagrange(old_share, shares_ids);
+        let secret = *old_share.value * *Self::lagrange(old_share, shares_ids)?;
         Self::initialize(
             new_identifier,
             parameters,
@@ -195,7 +195,7 @@ where
             ParticipantType::Refresh => IdentifierPrimeField(G::Scalar::ZERO),
         };
 
-        let (shares, verifiers) = vsss_rs::feldman::split_secret_with_participant_generator::<
+        let (shares, verifiers) = vsss_rs::feldman::split_secret_with_participant_generators::<
             SecretShare<G::Scalar>,
             ShareVerifierGroup<G>,
         >(
@@ -400,7 +400,19 @@ where
     pub(crate) fn lagrange(
         share: &SecretShare<G::Scalar>,
         shares_ids: &[IdentifierPrimeField<G::Scalar>],
-    ) -> ValuePrimeField<G::Scalar> {
+    ) -> DkgResult<ValuePrimeField<G::Scalar>> {
+        if shares_ids
+            .iter()
+            .map(|id| id.0.to_repr().as_ref().to_vec())
+            .collect::<BTreeSet<_>>()
+            .len()
+            != shares_ids.len()
+        {
+            return Err(Error::Initialization(
+                "participant identifiers must be unique".to_string(),
+            ));
+        }
+
         let mut num = G::Scalar::ONE;
         let mut den = G::Scalar::ONE;
         for &x_j in shares_ids.iter() {
@@ -411,7 +423,10 @@ where
             den *= *x_j - *share.identifier;
         }
 
-        IdentifierPrimeField(num * den.invert().expect("Denominator should not be zero"))
+        let den_inverse = Option::<G::Scalar>::from(den.invert()).ok_or_else(|| {
+            Error::Initialization("participant identifiers must be unique".to_string())
+        })?;
+        Ok(IdentifierPrimeField(num * den_inverse))
     }
 }
 
@@ -677,4 +692,27 @@ where
     let mut transcript_hash = [0u8; 32];
     transcript.challenge_bytes(b"final result", &mut transcript_hash);
     transcript_hash
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use k256::{ProjectivePoint, Scalar};
+    use vsss_rs::Share;
+
+    #[test]
+    fn lagrange_rejects_duplicate_identifiers() {
+        let identifier = IdentifierPrimeField(Scalar::ONE);
+        let share =
+            SecretShare::with_identifier_and_value(identifier, IdentifierPrimeField(Scalar::ONE));
+        let identifiers = [identifier, identifier];
+
+        let result =
+            Participant::<SecretParticipantImpl<ProjectivePoint>, ProjectivePoint>::lagrange(
+                &share,
+                &identifiers,
+            );
+
+        assert!(matches!(result, Err(Error::Initialization(_))));
+    }
 }

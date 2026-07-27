@@ -3,7 +3,7 @@ use elliptic_curve::group::GroupEncoding;
 use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve_tools::SumOfProducts;
 use std::num::NonZeroUsize;
-use vsss_rs::{IdentifierPrimeField, ParticipantIdGeneratorType};
+use vsss_rs::{IdentifierPrimeField, ParticipantIdGenerator};
 
 /// The parameters used by the DKG participants.
 /// This must be the same for all of them otherwise the protocol
@@ -18,7 +18,7 @@ where
     pub(crate) limit: usize,
     pub(crate) message_generator: G,
     pub(crate) participant_number_generators:
-        Vec<ParticipantIdGeneratorType<'a, IdentifierPrimeField<G::Scalar>>>,
+        Vec<ParticipantIdGenerator<'a, IdentifierPrimeField<G::Scalar>>>,
 }
 
 impl<'a, G> Parameters<'a, G>
@@ -33,12 +33,12 @@ where
         limit: NonZeroUsize,
         message_generator: Option<G>,
         participant_number_generator: Option<
-            Vec<ParticipantIdGeneratorType<'a, IdentifierPrimeField<G::Scalar>>>,
+            Vec<ParticipantIdGenerator<'a, IdentifierPrimeField<G::Scalar>>>,
         >,
     ) -> Self {
         let message_generator = message_generator.unwrap_or_else(G::generator);
         let participant_number_generator = participant_number_generator.unwrap_or_else(|| {
-            vec![ParticipantIdGeneratorType::Sequential {
+            vec![ParticipantIdGenerator::Sequential {
                 start: IdentifierPrimeField::ONE,
                 increment: IdentifierPrimeField::ONE,
                 count: limit.get(),
@@ -70,7 +70,7 @@ where
     /// Get the participant number generator
     pub fn participant_number_generator(
         &self,
-    ) -> &[ParticipantIdGeneratorType<'a, IdentifierPrimeField<G::Scalar>>] {
+    ) -> &[ParticipantIdGenerator<'a, IdentifierPrimeField<G::Scalar>>] {
         &self.participant_number_generators
     }
 }

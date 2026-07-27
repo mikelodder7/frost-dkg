@@ -11,7 +11,7 @@ license = "Apache-2.0 OR MIT"
 name = "frost-dkg"
 readme = "README.md"
 repository = "https://github.com/mikelodder7/frost-dkg"
-version = "0.6.0-rc3"
+version = "0.6.0-rc4"
 
 [features]
 default = [
@@ -25,45 +25,41 @@ default = [
 ]
 bls12_381_plus = ["dep:bls12_381_plus", "dep:sha2_010"]
 blstrs_plus = ["dep:blstrs_plus", "dep:sha2_010"]
-curve25519-dalek = ["dep:curve25519-dalek", "sha2"]
-ed448 = ["ed448-goldilocks-plus", "sha3", "shake"]
-k256 = ["dep:k256", "sha2"]
-p256 = ["dep:p256", "sha2"]
-p384 = ["dep:p384", "sha2"]
+curve25519-dalek = ["dep:curve25519-dalek", "dep:sha2"]
+ed448 = ["dep:ed448-goldilocks-plus", "dep:hash2curve", "dep:sha3", "dep:shake"]
+k256 = ["dep:hash2curve", "dep:k256", "dep:sha2"]
+p256 = ["dep:hash2curve", "dep:p256", "dep:sha2"]
+p384 = ["dep:hash2curve", "dep:p384", "dep:sha2"]
 
 [dependencies]
 elliptic-curve = "0.14.1"
-elliptic-curve-tools = { version = "0.3.0", features = ["std"] }
-hash2curve = "0.14.0"
+elliptic-curve-tools = { version = "0.3.0", default-features = false, features = ["alloc"] }
+hash2curve = { version = "0.14.0", optional = true }
 hex = "0.4"
 merlin = "3"
 rand = "0.10"
 rand_core = "0.10"
 serde = "1.0"
 thiserror = "2.0"
-postcard = { version = "1.1", features = ["use-std"] }
-vsss-rs = "6.0.0-rc1"
+postcard = { version = "1.1", default-features = false, features = ["use-std"] }
+vsss-rs = { version = "6.0.0-rc8", default-features = false, features = ["alloc", "curve-serde", "zeroize"] }
 
-bls12_381_plus = { version = "0.9.0-rc1", features = ["expose-fields"], optional = true }
-blstrs_plus = { version = "0.9.0-rc1", features = ["expose-fields"], optional = true }
+bls12_381_plus = { version = "0.9.0-rc1", default-features = false, features = ["alloc", "expose-fields"], optional = true }
+blstrs_plus = { version = "0.9.0-rc1", default-features = false, features = ["alloc", "expose-fields"], optional = true }
 curve25519-dalek = { version = "5.0.0", features = ["digest", "ff", "group"], optional = true }
-ed448-goldilocks-plus = { version = "0.18.0-rc1", optional = true }
-k256 = { version = "0.14.0", features = ["arithmetic", "hash2curve"], optional = true }
-p256 = { version = "0.14.0", features = ["arithmetic", "hash2curve"], optional = true }
-p384 = { version = "0.14.0", features = ["arithmetic", "hash2curve"], optional = true }
+ed448-goldilocks-plus = { version = "0.18.0", optional = true }
+k256 = { version = "0.14.0", default-features = false, features = ["arithmetic", "hash2curve"], optional = true }
+p256 = { version = "0.14.0", default-features = false, features = ["arithmetic", "hash2curve"], optional = true }
+p384 = { version = "0.14.0", default-features = false, features = ["arithmetic", "hash2curve"], optional = true }
 sha2 = { version = "0.11", optional = true }
 sha2_010 = { version = "0.10", package = "sha2", optional = true }
 sha3 = { version = "0.12", optional = true }
 shake = { version = "0.1", optional = true }
 
 [dev-dependencies]
-bls12_381_plus = { version = "0.9.0-rc1", features = ["expose-fields"] }
-blstrs_plus = { version = "0.9.0-rc1", features = ["expose-fields"] }
 curve25519-dalek = { version = "5.0.0", features = ["digest", "ff", "group"] }
-ed448-goldilocks-plus = "0.18.0-rc0"
-k256 = { version = "0.14.0", features = ["arithmetic"] }
-p256 = { version = "0.14.0", features = ["arithmetic"] }
-p384 = { version = "0.14.0", features = ["arithmetic"] }
+ed448-goldilocks-plus = "0.18.0"
+k256 = { version = "0.14.0", default-features = false, features = ["arithmetic", "hash2curve"] }
+p256 = { version = "0.14.0", default-features = false, features = ["arithmetic", "hash2curve"] }
 rand_chacha = "0.10"
-rand_core = "0.10"
-rstest = "0.26"
+rstest = { version = "0.26", default-features = false }

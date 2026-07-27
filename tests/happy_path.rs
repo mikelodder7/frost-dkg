@@ -6,7 +6,7 @@ use rand_core::{Rng, SeedableRng};
 use rstest::*;
 use std::num::NonZeroUsize;
 use vsss_rs::{
-    IdentifierPrimeField, ParticipantIdGeneratorCollection, ParticipantIdGeneratorType,
+    IdentifierPrimeField, ParticipantIdGenerator, ParticipantIdGeneratorCollection,
     ReadableShareSet,
     elliptic_curve::{Group, group::GroupEncoding},
 };
@@ -122,7 +122,7 @@ where
     let mut pids = participants.iter().map(|p| p.get_id()).collect::<Vec<_>>();
     pids.push(IdentifierPrimeField(G::Scalar::random(&mut rng)));
     pids.push(IdentifierPrimeField(G::Scalar::random(&mut rng)));
-    let seq = vec![ParticipantIdGeneratorType::list(&pids)];
+    let seq = vec![ParticipantIdGenerator::list(&pids)];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 7] = [
@@ -220,7 +220,7 @@ where
         participants[2].get_id(),
         participants[4].get_id(),
     ];
-    let seq = vec![ParticipantIdGeneratorType::list(share_ids.as_slice())];
+    let seq = vec![ParticipantIdGenerator::list(share_ids.as_slice())];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 3] = [
@@ -301,7 +301,7 @@ where
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
     ];
 
-    let seq = vec![ParticipantIdGeneratorType::list(&share_ids)];
+    let seq = vec![ParticipantIdGenerator::list(&share_ids)];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 4] = [
@@ -383,7 +383,7 @@ where
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
     ];
-    let seq = vec![ParticipantIdGeneratorType::list(&share_ids)];
+    let seq = vec![ParticipantIdGenerator::list(&share_ids)];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 6] = [
@@ -459,8 +459,7 @@ where
         .map(|_| IdentifierPrimeField(G::Scalar::random(&mut rng)))
         .collect::<Vec<_>>();
 
-    let seq =
-        vec![ParticipantIdGeneratorType::<IdentifierPrimeField<G::Scalar>>::list(ids.as_slice())];
+    let seq = vec![ParticipantIdGenerator::<IdentifierPrimeField<G::Scalar>>::list(ids.as_slice())];
     let parameters = Parameters::<G>::new(
         NonZeroUsize::new(THRESHOLD).unwrap(),
         NonZeroUsize::new(LIMIT).unwrap(),
@@ -534,7 +533,7 @@ where
     let threshold = NonZeroUsize::new(THRESHOLD).unwrap();
     let limit = NonZeroUsize::new(LIMIT).unwrap();
     let pids = participants.iter().map(|p| p.get_id()).collect::<Vec<_>>();
-    let seq = vec![ParticipantIdGeneratorType::list(&pids)];
+    let seq = vec![ParticipantIdGenerator::list(&pids)];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 5] = [
@@ -706,9 +705,7 @@ where
     let threshold = NonZeroUsize::new(THRESHOLD).unwrap();
     let limit = NonZeroUsize::new(LIMIT).unwrap();
     let seq = vec![
-        ParticipantIdGeneratorType::<IdentifierPrimeField<G::Scalar>>::sequential(
-            None, None, limit,
-        ),
+        ParticipantIdGenerator::<IdentifierPrimeField<G::Scalar>>::sequential(None, None, limit),
     ];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq.clone()));
     let mut participants = ParticipantIdGeneratorCollection::from(&seq)
@@ -780,8 +777,8 @@ where
     let limit = NonZeroUsize::new(LIMIT + INCREMENT).unwrap();
     let pids = participants.iter().map(|p| p.get_id()).collect::<Vec<_>>();
     let seq = vec![
-        ParticipantIdGeneratorType::list(&pids),
-        ParticipantIdGeneratorType::sequential(
+        ParticipantIdGenerator::list(&pids),
+        ParticipantIdGenerator::sequential(
             Some(IdentifierPrimeField(G::Scalar::from(6))),
             None,
             NonZeroUsize::new(2).unwrap(),

@@ -36,7 +36,7 @@ pub use rand_core;
 pub use vsss_rs;
 
 use elliptic_curve::{
-    Field, PrimeField,
+    Field, Group, PrimeField,
     group::GroupEncoding,
     subtle::{Choice, ConditionallySelectable},
 };
@@ -59,7 +59,7 @@ where
     // but also checks that the computed public matches from the commitments
     let rng = rand::rng();
     let dummy_shares =
-        vsss_rs::shamir::split_secret_with_participant_generator::<SecretShare<G::Scalar>>(
+        vsss_rs::shamir::split_secret_with_participant_generators::<SecretShare<G::Scalar>>(
             parameters.threshold,
             parameters.limit,
             &IdentifierPrimeField(G::Scalar::ZERO),
@@ -132,15 +132,17 @@ where
         }
 
         verify_signature(
-            round1_data.sender_ordinal,
-            &round1_data.sender_id,
-            &round1_data.sender_type,
-            parameters.threshold,
-            parameters.limit,
-            &parameters.message_generator,
-            &round1_data.feldman_commitments,
-            &round1_data.verifying_share,
-            &all_participant_ids,
+            SchnorrContext {
+                ordinal: round1_data.sender_ordinal,
+                id: &round1_data.sender_id,
+                participant_type: &round1_data.sender_type,
+                threshold: parameters.threshold,
+                limit: parameters.limit,
+                message_generator: &parameters.message_generator,
+                feldman_verifiers: &round1_data.feldman_commitments,
+                verifying_share: &round1_data.verifying_share,
+                all_participant_ids: &all_participant_ids,
+            },
             &round1_data.signature,
         )
         .map_err(|_e| Error::Pvss(format!("Data at {} failed signature verification", i + 1)))?;
@@ -167,84 +169,68 @@ where
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn verify_signature<G>(
+struct SchnorrContext<'a, G>
+where
+    G: Group + GroupEncoding + Default,
+{
     ordinal: usize,
-    id: &IdentifierPrimeField<G::Scalar>,
-    p_type: &ParticipantType,
+    id: &'a IdentifierPrimeField<G::Scalar>,
+    participant_type: &'a ParticipantType,
     threshold: usize,
     limit: usize,
-    message_generator: &G,
-    feldman_verifiers: &[ShareVerifierGroup<G>],
-    verifying_share: &G,
-    all_participant_ids: &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+    message_generator: &'a G,
+    feldman_verifiers: &'a [ShareVerifierGroup<G>],
+    verifying_share: &'a G,
+    all_participant_ids: &'a BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
+}
+
+pub(crate) fn verify_signature<G>(
+    context: SchnorrContext<'_, G>,
     signature: &Signature<G>,
 ) -> DkgResult<()>
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    let bytes = bytes_for_schnorr(
-        ordinal,
-        id,
-        p_type,
-        threshold,
-        limit,
-        message_generator,
-        feldman_verifiers,
-        verifying_share,
-        &signature.r,
-        all_participant_ids,
-    );
+    let bytes = bytes_for_schnorr(&context, &signature.r);
     let challenge = G::Scalar::hash_to_scalar(&bytes);
 
-    let computed_r = *message_generator * signature.s - *verifying_share * challenge;
+    let computed_r =
+        *context.message_generator * signature.s - *context.verifying_share * challenge;
     if signature.r != computed_r {
         return Err(Error::Round(format!(
             "Round {}: Received invalid round 1 signature proof from ordinal: '{}', id: '{:?}'",
             Round::One,
-            ordinal,
-            id,
+            context.ordinal,
+            context.id,
         )));
     }
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn bytes_for_schnorr<G>(
-    ordinal: usize,
-    id: &IdentifierPrimeField<G::Scalar>,
-    p_type: &ParticipantType,
-    threshold: usize,
-    limit: usize,
-    message_generator: &G,
-    feldman_verifiers: &[ShareVerifierGroup<G>],
-    verifying_share: &G,
-    r_i: &G,
-    all_participant_ids: &BTreeMap<usize, IdentifierPrimeField<G::Scalar>>,
-) -> Vec<u8>
+pub(crate) fn bytes_for_schnorr<G>(context: &SchnorrContext<'_, G>, r_i: &G) -> Vec<u8>
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
     let mut bytes = Vec::with_capacity(512);
     // ID
-    bytes.extend_from_slice(id.0.to_repr().as_ref());
+    bytes.extend_from_slice(context.id.0.to_repr().as_ref());
     // Add these for domain separation to prevent replay attacks
-    bytes.extend_from_slice(&(ordinal as u16).to_be_bytes());
-    bytes.extend_from_slice(&u16::from(*p_type).to_be_bytes());
-    bytes.extend_from_slice(&(threshold as u16).to_be_bytes());
-    bytes.extend_from_slice(&(limit as u16).to_be_bytes());
-    bytes.extend_from_slice(message_generator.to_bytes().as_ref());
-    for id in all_participant_ids.values() {
+    bytes.extend_from_slice(&(context.ordinal as u16).to_be_bytes());
+    bytes.extend_from_slice(&u16::from(*context.participant_type).to_be_bytes());
+    bytes.extend_from_slice(&(context.threshold as u16).to_be_bytes());
+    bytes.extend_from_slice(&(context.limit as u16).to_be_bytes());
+    bytes.extend_from_slice(context.message_generator.to_bytes().as_ref());
+    for id in context.all_participant_ids.values() {
         bytes.extend_from_slice(id.0.to_repr().as_ref());
     }
     // Add the R_i
     bytes.extend_from_slice(r_i.to_bytes().as_ref());
     // Add the verifying share
-    bytes.extend_from_slice(verifying_share.to_bytes().as_ref());
+    bytes.extend_from_slice(context.verifying_share.to_bytes().as_ref());
     // Add the verifiers
-    for vf in feldman_verifiers {
+    for vf in context.feldman_verifiers {
         bytes.extend_from_slice(vf.0.to_bytes().as_ref());
     }
     bytes
@@ -258,7 +244,7 @@ mod tests {
     use rand_core::SeedableRng;
     use std::num::NonZeroUsize;
     use vsss_rs::{
-        DefaultShare, IdentifierPrimeField, ParticipantIdGeneratorType, ReadableShareSet,
+        DefaultShare, IdentifierPrimeField, ParticipantIdGenerator, ReadableShareSet,
         ValuePrimeField, shamir,
     };
 
@@ -324,8 +310,8 @@ mod tests {
         let original_peer_ids = (1..=LIMIT)
             .map(|_| IdentifierPrimeField(k256::Scalar::random(&mut rng)))
             .collect::<Vec<_>>();
-        let original_peer_id_list = ParticipantIdGeneratorType::list(&original_peer_ids);
-        let original_shares = shamir::split_secret_with_participant_generator::<SecretShare>(
+        let original_peer_id_list = ParticipantIdGenerator::list(&original_peer_ids);
+        let original_shares = shamir::split_secret_with_participant_generators::<SecretShare>(
             THRESHOLD,
             LIMIT,
             &IdentifierPrimeField(original_secret),
@@ -342,7 +328,7 @@ mod tests {
             threshold,
             limit,
             None,
-            Some(vec![ParticipantIdGeneratorType::list(&new_peer_ids)]),
+            Some(vec![ParticipantIdGenerator::list(&new_peer_ids)]),
         );
         let mut participants = Vec::with_capacity(LIMIT);
         for i in 0..LIMIT {

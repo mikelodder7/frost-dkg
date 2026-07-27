@@ -41,18 +41,19 @@ where
     }
 
     pub(crate) fn compute_signature(&self, k: G::Scalar, r_i: G) -> Signature<G> {
-        let bytes = crate::bytes_for_schnorr(
-            self.ordinal,
-            &self.id,
-            &self.participant_impl.get_type(),
-            self.threshold,
-            self.limit,
-            &self.message_generator,
-            &self.feldman_verifiers,
-            &self.verifying_share,
-            &r_i,
-            &self.all_participant_ids,
-        );
+        let participant_type = self.participant_impl.get_type();
+        let context = crate::SchnorrContext {
+            ordinal: self.ordinal,
+            id: &self.id,
+            participant_type: &participant_type,
+            threshold: self.threshold,
+            limit: self.limit,
+            message_generator: &self.message_generator,
+            feldman_verifiers: &self.feldman_verifiers,
+            verifying_share: &self.verifying_share,
+            all_participant_ids: &self.all_participant_ids,
+        };
+        let bytes = crate::bytes_for_schnorr(&context, &r_i);
         let challenge = G::Scalar::hash_to_scalar(&bytes);
         let s = k + challenge * self.original_secret;
         Signature { r: r_i, s }
@@ -60,15 +61,17 @@ where
 
     pub(crate) fn verify_signature(&self, round1data: &Round1Data<G>) -> DkgResult<()> {
         crate::verify_signature(
-            round1data.sender_ordinal,
-            &round1data.sender_id,
-            &round1data.sender_type,
-            self.threshold,
-            self.limit,
-            &self.message_generator,
-            &round1data.feldman_commitments,
-            &round1data.verifying_share,
-            &self.all_participant_ids,
+            crate::SchnorrContext {
+                ordinal: round1data.sender_ordinal,
+                id: &round1data.sender_id,
+                participant_type: &round1data.sender_type,
+                threshold: self.threshold,
+                limit: self.limit,
+                message_generator: &self.message_generator,
+                feldman_verifiers: &round1data.feldman_commitments,
+                verifying_share: &round1data.verifying_share,
+                all_participant_ids: &self.all_participant_ids,
+            },
             &round1data.signature,
         )
     }
