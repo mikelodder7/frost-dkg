@@ -123,7 +123,10 @@ where
     pids.push(IdentifierPrimeField(G::Scalar::random(&mut rng)));
     pids.push(IdentifierPrimeField(G::Scalar::random(&mut rng)));
     let seq = vec![ParticipantIdGenerator::list(&pids)];
-    let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
+    let parameters = Parameters::<G>::new(threshold, limit)
+        .unwrap()
+        .with_participant_number_generators(seq)
+        .unwrap();
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 7] = [
         Box::new(
@@ -221,7 +224,10 @@ where
         participants[4].id(),
     ];
     let seq = vec![ParticipantIdGenerator::list(share_ids.as_slice())];
-    let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
+    let parameters = Parameters::<G>::new(threshold, limit)
+        .unwrap()
+        .with_participant_number_generators(seq)
+        .unwrap();
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 3] = [
         Box::new(
@@ -302,7 +308,10 @@ where
     ];
 
     let seq = vec![ParticipantIdGenerator::list(&share_ids)];
-    let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
+    let parameters = Parameters::<G>::new(threshold, limit)
+        .unwrap()
+        .with_participant_number_generators(seq)
+        .unwrap();
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 4] = [
         Box::new(
@@ -384,7 +393,10 @@ where
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
     ];
     let seq = vec![ParticipantIdGenerator::list(&share_ids)];
-    let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
+    let parameters = Parameters::<G>::new(threshold, limit)
+        .unwrap()
+        .with_participant_number_generators(seq)
+        .unwrap();
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 6] = [
         Box::new(
@@ -463,9 +475,10 @@ where
     let parameters = Parameters::<G>::new(
         NonZeroUsize::new(THRESHOLD).unwrap(),
         NonZeroUsize::new(LIMIT).unwrap(),
-        None,
-        Some(seq.clone()),
-    );
+    )
+    .unwrap()
+    .with_participant_number_generators(seq.clone())
+    .unwrap();
 
     let mut participants = ParticipantIdGeneratorCollection::from(&seq)
         .iter()
@@ -534,7 +547,10 @@ where
     let limit = NonZeroUsize::new(LIMIT).unwrap();
     let pids = participants.iter().map(|p| p.id()).collect::<Vec<_>>();
     let seq = vec![ParticipantIdGenerator::list(&pids)];
-    let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
+    let parameters = Parameters::<G>::new(threshold, limit)
+        .unwrap()
+        .with_participant_number_generators(seq)
+        .unwrap();
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 5] = [
         Box::new(
@@ -707,7 +723,10 @@ where
     let seq = vec![
         ParticipantIdGenerator::<IdentifierPrimeField<G::Scalar>>::sequential(None, None, limit),
     ];
-    let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq.clone()));
+    let parameters = Parameters::<G>::new(threshold, limit)
+        .unwrap()
+        .with_participant_number_generators(seq.clone())
+        .unwrap();
     let mut participants = ParticipantIdGeneratorCollection::from(&seq)
         .iter()
         .map(|id| {
@@ -784,7 +803,10 @@ where
             NonZeroUsize::new(2).unwrap(),
         ),
     ];
-    let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
+    let parameters = Parameters::<G>::new(threshold, limit)
+        .unwrap()
+        .with_participant_number_generators(seq)
+        .unwrap();
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 7] = [
         Box::new(
@@ -891,7 +913,7 @@ where
 
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT).unwrap();
-    let parameters = Parameters::<G>::new(threshold, limit, None, None);
+    let parameters = Parameters::<G>::new(threshold, limit).unwrap();
 
     let share_ids = [
         IdentifierPrimeField(G::Scalar::from(1)),
@@ -971,7 +993,7 @@ where
 
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT + INCREMENT).unwrap();
-    let parameters = Parameters::<G>::new(threshold, limit, None, None);
+    let parameters = Parameters::<G>::new(threshold, limit).unwrap();
 
     let share_ids = [
         participants[1].id(),
@@ -1062,7 +1084,7 @@ where
         participants[2].id(),
         participants[4].id(),
     ];
-    let parameters = Parameters::<G>::new(threshold, limit, None, None);
+    let parameters = Parameters::<G>::new(threshold, limit).unwrap();
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 6] = [
         Box::new(

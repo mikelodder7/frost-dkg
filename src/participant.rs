@@ -166,20 +166,6 @@ where
     ) -> DkgResult<Self> {
         let rng = rand::rng();
 
-        if parameters.threshold > parameters.limit {
-            return Err(Error::Initialization(
-                "Threshold greater than limit".to_string(),
-            ));
-        }
-        if parameters.threshold < 2 {
-            return Err(Error::Initialization("Threshold less than 1".to_string()));
-        }
-        if parameters.message_generator.is_identity().into() {
-            return Err(Error::Initialization(
-                "Invalid message generator".to_string(),
-            ));
-        }
-
         let mut powers_of_i = vec![G::Scalar::ONE; parameters.threshold];
         powers_of_i[1] = *id;
         for i in 2..parameters.threshold {
@@ -914,9 +900,8 @@ mod tests {
         let parameters = Parameters::new(
             NonZeroUsize::new(2).expect("threshold is non-zero"),
             NonZeroUsize::new(2).expect("limit is non-zero"),
-            None,
-            None,
-        );
+        )
+        .expect("valid parameters");
         let mut participant = SecretParticipant::<ProjectivePoint>::new_secret(
             IdentifierPrimeField::ONE,
             &parameters,
@@ -935,9 +920,8 @@ mod tests {
         let parameters = Parameters::new(
             NonZeroUsize::new(2).expect("threshold is non-zero"),
             NonZeroUsize::new(2).expect("limit is non-zero"),
-            None,
-            None,
-        );
+        )
+        .expect("valid parameters");
         let participant = SecretParticipant::<ProjectivePoint>::new_secret(
             IdentifierPrimeField::ONE,
             &parameters,
@@ -957,9 +941,8 @@ mod tests {
         let parameters = Parameters::new(
             NonZeroUsize::new(2).expect("threshold is non-zero"),
             NonZeroUsize::new(2).expect("limit is non-zero"),
-            None,
-            None,
-        );
+        )
+        .expect("valid parameters");
         let participant = SecretParticipant::<ProjectivePoint>::new_secret(
             IdentifierPrimeField::ONE,
             &parameters,

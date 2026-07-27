@@ -284,7 +284,8 @@ mod tests {
         let threshold = NonZeroUsize::new(THRESHOLD).expect("threshold is non-zero");
         let limit = NonZeroUsize::new(LIMIT).expect("limit is non-zero");
 
-        let parameters = Parameters::<k256::ProjectivePoint>::new(threshold, limit, None, None);
+        let parameters =
+            Parameters::<k256::ProjectivePoint>::new(threshold, limit).expect("valid parameters");
 
         let mut participants = (1..=3)
             .map(|id| {
@@ -335,9 +336,8 @@ mod tests {
         let parameters = Parameters::<k256::ProjectivePoint>::new(
             NonZeroUsize::new(THRESHOLD).expect("threshold is non-zero"),
             NonZeroUsize::new(LIMIT).expect("limit is non-zero"),
-            None,
-            None,
-        );
+        )
+        .expect("valid parameters");
         let mut participants = (1..=LIMIT)
             .map(|id| {
                 SecretParticipant::<k256::ProjectivePoint>::new_secret(
@@ -405,9 +405,8 @@ mod tests {
         let parameters = Parameters::<k256::ProjectivePoint>::new(
             NonZeroUsize::new(THRESHOLD).expect("threshold is non-zero"),
             NonZeroUsize::new(LIMIT).expect("limit is non-zero"),
-            None,
-            None,
-        );
+        )
+        .expect("valid parameters");
         let mut participants = (1..=LIMIT)
             .map(|id| {
                 SecretParticipant::<k256::ProjectivePoint>::new_secret(
@@ -498,12 +497,10 @@ mod tests {
             .map(|_| IdentifierPrimeField(k256::Scalar::random(&mut rng)))
             .collect::<Vec<_>>();
 
-        let parameters = Parameters::<k256::ProjectivePoint>::new(
-            threshold,
-            limit,
-            None,
-            Some(vec![ParticipantIdGenerator::list(&new_peer_ids)]),
-        );
+        let parameters = Parameters::<k256::ProjectivePoint>::new(threshold, limit)
+            .expect("valid parameters")
+            .with_participant_number_generators(vec![ParticipantIdGenerator::list(&new_peer_ids)])
+            .expect("valid participant identifiers");
         let mut participants = Vec::with_capacity(LIMIT);
         for i in 0..LIMIT {
             let participant = SecretParticipant::<k256::ProjectivePoint>::with_secret(
