@@ -2,7 +2,7 @@ use super::*;
 use elliptic_curve::group::GroupEncoding;
 use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve_tools::SumOfProducts;
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::num::NonZeroUsize;
 use vsss_rs::{IdentifierPrimeField, ParticipantIdGenerator, ParticipantIdGeneratorCollection};
 
@@ -92,10 +92,7 @@ where
                 self.limit
             )));
         }
-        let unique_ids = participant_ids
-            .iter()
-            .map(|id| id.0.to_repr().as_ref().to_vec())
-            .collect::<BTreeSet<_>>();
+        let unique_ids = participant_ids.iter().copied().collect::<HashSet<_>>();
         if unique_ids.len() != participant_ids.len() {
             return Err(Error::Initialization(
                 "Participant identifiers must be unique".to_string(),

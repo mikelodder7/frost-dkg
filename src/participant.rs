@@ -9,7 +9,7 @@ use elliptic_curve::{Field, Group};
 use elliptic_curve_tools::SumOfProducts;
 use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::fmt::{self, Debug, Formatter};
 use std::marker::PhantomData;
 use vsss_rs::{
@@ -48,10 +48,7 @@ impl<'a, F: ScalarHash> ReconstructionSet<'a, F> {
                 "Reconstruction participant identifiers cannot be zero".to_string(),
             ));
         }
-        let unique_identifiers = identifiers
-            .iter()
-            .map(|id| id.0.to_repr().as_ref().to_vec())
-            .collect::<BTreeSet<_>>();
+        let unique_identifiers = identifiers.iter().copied().collect::<HashSet<_>>();
         if unique_identifiers.len() != identifiers.len() {
             return Err(Error::Initialization(
                 "Reconstruction participant identifiers must be unique".to_string(),
