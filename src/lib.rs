@@ -451,7 +451,7 @@ mod tests {
                     let recipient = &mut participants[output.dst_ordinal];
                     assert_eq!(recipient.id(), output.dst_id);
                     recipient
-                        .receive(&output.data)
+                        .receive(output.data.as_bytes())
                         .expect("receive opaque protocol message");
                 }
             }
@@ -562,7 +562,7 @@ mod tests {
                 dst_id: id,
                 data,
                 ..
-            } in round_generator.iter()
+            } in round_generator.iter().expect("serialize round output")
             {
                 if let Some(participant) = participants.get_mut(ordinal) {
                     assert_eq!(participant.ordinal, ordinal);

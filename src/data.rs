@@ -120,9 +120,13 @@ pub struct ParticipantRoundOutput<F: ScalarHash> {
     /// The participant ordinal to where the data should be sent
     pub dst_ordinal: usize,
     /// The participant ID to where the data should be sent
+    #[serde(bound(
+        serialize = "IdentifierPrimeField<F>: Serialize",
+        deserialize = "IdentifierPrimeField<F>: Deserialize<'de>"
+    ))]
     pub dst_id: IdentifierPrimeField<F>,
     /// The data to send
-    pub data: Vec<u8>,
+    pub data: WireMessage,
 }
 
 impl<F> ParticipantRoundOutput<F>
@@ -130,7 +134,7 @@ where
     F: ScalarHash,
 {
     /// Create a new participant round output
-    pub fn new(dst_ordinal: usize, dst_id: IdentifierPrimeField<F>, data: Vec<u8>) -> Self {
+    pub fn new(dst_ordinal: usize, dst_id: IdentifierPrimeField<F>, data: WireMessage) -> Self {
         Self {
             dst_ordinal,
             dst_id,
@@ -210,6 +214,35 @@ impl WireMessage {
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
+
+    /// Borrow the serialized message as a byte slice.
+    pub fn as_slice(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+impl From<Vec<u8>> for WireMessage {
+    fn from(value: Vec<u8>) -> Self {
+        Self(Arc::from(value))
+    }
+}
+
+impl Serialize for WireMessage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(self.as_bytes())
+    }
+}
+
+impl<'de> Deserialize<'de> for WireMessage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Vec::<u8>::deserialize(deserializer).map(Self::from)
+    }
 }
 
 impl AsRef<[u8]> for WireMessage {
@@ -281,19 +314,11 @@ impl<F: ScalarHash> OutboundMessages<F> {
             match message.destination {
                 MessageDestination::Broadcast => {
                     outputs.extend(self.broadcast_recipients.iter().map(|(&ordinal, &id)| {
-                        ParticipantRoundOutput::new(
-                            ordinal,
-                            id,
-                            message.message.as_bytes().to_vec(),
-                        )
+                        ParticipantRoundOutput::new(ordinal, id, message.message.clone())
                     }));
                 }
                 MessageDestination::Direct { ordinal, id } => {
-                    outputs.push(ParticipantRoundOutput::new(
-                        ordinal,
-                        id,
-                        message.message.as_bytes().to_vec(),
-                    ));
+                    outputs.push(ParticipantRoundOutput::new(ordinal, id, message.message));
                 }
             }
         }
@@ -394,8 +419,8 @@ where
     /// Iterate over the data to send to other participants
     /// The output is data that the caller sends the data to participant
     /// at ordinal index with id.
-    pub fn iter(&self) -> Box<dyn Iterator<Item = ParticipantRoundOutput<G::Scalar>> + '_> {
-        match self {
+    pub fn iter(&self) -> DkgResult<std::vec::IntoIter<ParticipantRoundOutput<G::Scalar>>> {
+        let outputs = match self {
             Self::Round1(data) => {
                 let round1_output_data = Round1Data {
                     sender_ordinal: data.sender_ordinal,
@@ -405,16 +430,19 @@ where
                     verifying_share: data.verifying_share,
                     signature: data.signature,
                 };
-                let mut output =
-                    postcard::to_stdvec(&round1_output_data).expect("to serialize into bytes");
+                let mut output = postcard::to_stdvec(&round1_output_data)?;
                 output.insert(0, u8::from(Round::One));
-                Box::new(data.participant_ids.iter().filter_map(move |(index, id)| {
-                    if *index == data.sender_ordinal {
-                        None
-                    } else {
-                        Some(ParticipantRoundOutput::new(*index, *id, output.clone()))
-                    }
-                }))
+                let output = WireMessage::from(output);
+                data.participant_ids
+                    .iter()
+                    .filter_map(|(index, id)| {
+                        if *index == data.sender_ordinal {
+                            None
+                        } else {
+                            Some(ParticipantRoundOutput::new(*index, *id, output.clone()))
+                        }
+                    })
+                    .collect()
             }
             Self::Round2(data) => {
                 let mut round2_output_data = Round2Data {
@@ -424,20 +452,22 @@ where
                     secret_share: SecretShare::<G::Scalar>::default(),
                     transcript_hash: data.transcript_hash,
                 };
-                Box::new(data.participant_ids.iter().filter_map(move |(index, &id)| {
+                let mut outputs = Vec::with_capacity(data.participant_ids.len().saturating_sub(1));
+                for (index, &id) in &data.participant_ids {
                     if *index == data.sender_ordinal {
-                        return None;
+                        continue;
                     }
                     debug_assert_eq!(data.secret_shares[index].identifier, id);
                     round2_output_data.secret_share = data.secret_shares[index];
-                    let mut output =
-                        postcard::to_stdvec(&round2_output_data).expect("to serialize into bytes");
+                    let mut output = postcard::to_stdvec(&round2_output_data)?;
                     output.insert(0, u8::from(Round::Two));
-                    Some(ParticipantRoundOutput::new(*index, id, output))
-                }))
+                    outputs.push(ParticipantRoundOutput::new(*index, id, output.into()));
+                }
+                outputs
             }
-            Self::Round3 => Box::new(std::iter::empty()),
-        }
+            Self::Round3 => Vec::new(),
+        };
+        Ok(outputs.into_iter())
     }
 }
 
@@ -631,5 +661,27 @@ impl<F: ScalarHash> Round2Data<F> {
     /// Get the transcript hash used by the DKG
     pub fn transcript_hash(&self) -> [u8; 32] {
         self.transcript_hash
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn participant_round_output_postcard_round_trip() {
+        let output = ParticipantRoundOutput::<k256::Scalar>::new(
+            1,
+            IdentifierPrimeField(k256::Scalar::ONE),
+            vec![1, 2, 3].into(),
+        );
+
+        let encoded = postcard::to_stdvec(&output).expect("serialize round output");
+        let decoded = postcard::from_bytes::<ParticipantRoundOutput<k256::Scalar>>(&encoded)
+            .expect("deserialize round output");
+
+        assert_eq!(decoded.dst_ordinal, output.dst_ordinal);
+        assert_eq!(decoded.dst_id, output.dst_id);
+        assert_eq!(decoded.data.as_bytes(), output.data.as_bytes());
     }
 }

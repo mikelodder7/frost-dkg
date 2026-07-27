@@ -1197,7 +1197,7 @@ fn receive<G>(
             dst_id: id,
             data,
             ..
-        } in round_generator.iter()
+        } in round_generator.iter().unwrap()
         {
             if let Some(participant) = participants.get_mut(ordinal) {
                 assert_eq!(participant.ordinal(), ordinal);
