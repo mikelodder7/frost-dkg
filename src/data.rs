@@ -6,6 +6,7 @@ use elliptic_curve_tools::{SumOfProducts, group, prime_field};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt::{self, Display, Formatter};
+use std::sync::Arc;
 use vsss_rs::{IdentifierPrimeField, ShareVerifierGroup};
 
 /// Valid rounds
@@ -200,6 +201,116 @@ where
     }
 }
 
+/// An opaque, serialized protocol message.
+#[derive(Clone)]
+pub struct WireMessage(Arc<[u8]>);
+
+impl WireMessage {
+    /// Borrow the serialized message.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl AsRef<[u8]> for WireMessage {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+impl fmt::Debug for WireMessage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WireMessage")
+            .field("len", &self.0.len())
+            .finish()
+    }
+}
+
+/// The transport destination for an opaque protocol message.
+#[derive(Clone, Debug)]
+pub enum MessageDestination<F: ScalarHash> {
+    /// Send the message through the application's broadcast channel.
+    Broadcast,
+    /// Send the message only to the specified participant.
+    Direct {
+        /// The recipient's ordinal index.
+        ordinal: usize,
+        /// The recipient's identifier.
+        id: IdentifierPrimeField<F>,
+    },
+}
+
+/// An opaque outbound protocol message and its transport destination.
+#[derive(Clone, Debug)]
+pub struct OutboundMessage<F: ScalarHash> {
+    destination: MessageDestination<F>,
+    message: WireMessage,
+}
+
+impl<F: ScalarHash> OutboundMessage<F> {
+    /// The transport destination for this message.
+    pub fn destination(&self) -> &MessageDestination<F> {
+        &self.destination
+    }
+
+    /// The opaque bytes to send.
+    pub fn message(&self) -> &WireMessage {
+        &self.message
+    }
+}
+
+/// The outbound messages produced by one protocol round.
+#[derive(Clone, Debug)]
+pub struct OutboundMessages<F: ScalarHash> {
+    messages: Vec<OutboundMessage<F>>,
+    broadcast_recipients: BTreeMap<usize, IdentifierPrimeField<F>>,
+}
+
+impl<F: ScalarHash> OutboundMessages<F> {
+    /// The transport-aware messages produced by the round.
+    pub fn messages(&self) -> &[OutboundMessage<F>] {
+        &self.messages
+    }
+
+    /// Expand broadcasts into participant-targeted messages.
+    ///
+    /// This is useful for transports that do not provide native broadcast.
+    pub fn into_per_recipient(self) -> Vec<ParticipantRoundOutput<F>> {
+        let mut outputs = Vec::new();
+        for message in self.messages {
+            match message.destination {
+                MessageDestination::Broadcast => {
+                    outputs.extend(self.broadcast_recipients.iter().map(|(&ordinal, &id)| {
+                        ParticipantRoundOutput::new(
+                            ordinal,
+                            id,
+                            message.message.as_bytes().to_vec(),
+                        )
+                    }));
+                }
+                MessageDestination::Direct { ordinal, id } => {
+                    outputs.push(ParticipantRoundOutput::new(
+                        ordinal,
+                        id,
+                        message.message.as_bytes().to_vec(),
+                    ));
+                }
+            }
+        }
+        outputs
+    }
+}
+
+/// The result of advancing a participant by one protocol round.
+#[derive(Clone, Debug)]
+pub enum AdvanceResult<F: ScalarHash> {
+    /// Messages that must be delivered before advancing again.
+    Messages(OutboundMessages<F>),
+    /// The participant has completed the protocol and can be converted into
+    /// [`DkgOutput`] with `Participant::into_output`.
+    Complete,
+}
+
 /// The round output generator
 #[derive(Debug, Clone)]
 pub enum RoundOutputGenerator<G>
@@ -220,6 +331,66 @@ where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
+    /// Serialize the round output into opaque, transport-aware messages.
+    pub fn into_messages(self) -> DkgResult<OutboundMessages<G::Scalar>> {
+        match self {
+            Self::Round1(data) => {
+                let round1_output_data = Round1Data {
+                    sender_ordinal: data.sender_ordinal,
+                    sender_id: data.sender_id,
+                    sender_type: data.sender_type,
+                    feldman_commitments: data.feldman_commitments,
+                    verifying_share: data.verifying_share,
+                    signature: data.signature,
+                };
+                let mut output = postcard::to_stdvec(&round1_output_data)?;
+                output.insert(0, u8::from(Round::One));
+                let broadcast_recipients = data
+                    .participant_ids
+                    .into_iter()
+                    .filter(|(ordinal, _)| *ordinal != data.sender_ordinal)
+                    .collect();
+                Ok(OutboundMessages {
+                    messages: vec![OutboundMessage {
+                        destination: MessageDestination::Broadcast,
+                        message: WireMessage(Arc::from(output)),
+                    }],
+                    broadcast_recipients,
+                })
+            }
+            Self::Round2(data) => {
+                let mut messages = Vec::with_capacity(data.participant_ids.len().saturating_sub(1));
+                for (ordinal, id) in data.participant_ids {
+                    if ordinal == data.sender_ordinal {
+                        continue;
+                    }
+                    debug_assert_eq!(data.secret_shares[&ordinal].identifier, id);
+                    let round2_output_data = Round2Data {
+                        sender_ordinal: data.sender_ordinal,
+                        sender_id: data.sender_id,
+                        sender_type: data.sender_type,
+                        secret_share: data.secret_shares[&ordinal],
+                        transcript_hash: data.transcript_hash,
+                    };
+                    let mut output = postcard::to_stdvec(&round2_output_data)?;
+                    output.insert(0, u8::from(Round::Two));
+                    messages.push(OutboundMessage {
+                        destination: MessageDestination::Direct { ordinal, id },
+                        message: WireMessage(Arc::from(output)),
+                    });
+                }
+                Ok(OutboundMessages {
+                    messages,
+                    broadcast_recipients: BTreeMap::new(),
+                })
+            }
+            Self::Round3 => Ok(OutboundMessages {
+                messages: Vec::new(),
+                broadcast_recipients: BTreeMap::new(),
+            }),
+        }
+    }
+
     /// Iterate over the data to send to other participants
     /// The output is data that the caller sends the data to participant
     /// at ordinal index with id.

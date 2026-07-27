@@ -470,6 +470,17 @@ where
         }
     }
 
+    /// Advance the protocol by one round.
+    ///
+    /// Protocol messages are serialized automatically and returned with only
+    /// the transport routing information callers need.
+    pub fn advance(&mut self) -> DkgResult<AdvanceResult<G::Scalar>> {
+        match self.run()? {
+            RoundOutputGenerator::Round3 => Ok(AdvanceResult::Complete),
+            output => Ok(AdvanceResult::Messages(output.into_messages()?)),
+        }
+    }
+
     pub(crate) fn check_sending_participant_id(
         &self,
         round: Round,
@@ -617,6 +628,8 @@ where
     fn receive(&mut self, data: &[u8]) -> DkgResult<()>;
     /// Run the next round in the protocol after receiving data from other participants
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>>;
+    /// Advance the protocol and produce opaque, transport-aware messages.
+    fn advance(&mut self) -> DkgResult<AdvanceResult<G::Scalar>>;
     /// Consume a completed participant and return its final DKG output.
     fn into_output(self: Box<Self>) -> DkgResult<DkgOutput<G>>;
 
@@ -778,6 +791,10 @@ where
         self.run()
     }
 
+    fn advance(&mut self) -> DkgResult<AdvanceResult<G::Scalar>> {
+        self.advance()
+    }
+
     fn into_output(self: Box<Self>) -> DkgResult<DkgOutput<G>> {
         (*self).into_output()
     }
@@ -854,6 +871,10 @@ where
 
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         self.run()
+    }
+
+    fn advance(&mut self) -> DkgResult<AdvanceResult<G::Scalar>> {
+        self.advance()
     }
 
     fn into_output(self: Box<Self>) -> DkgResult<DkgOutput<G>> {

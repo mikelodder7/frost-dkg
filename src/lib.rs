@@ -301,10 +301,7 @@ mod tests {
 
         let shares = participants
             .iter()
-            .map(|p| {
-                p.get_secret_share()
-                    .expect("participant has a secret share")
-            })
+            .map(|p| p.secret_share().expect("participant has a secret share"))
             .collect::<Vec<_>>();
 
         let res = shares.combine();
@@ -315,7 +312,7 @@ mod tests {
 
         assert_eq!(
             participants[1]
-                .get_public_key()
+                .public_key()
                 .expect("participant has public key"),
             expected_pk
         );
@@ -357,12 +354,12 @@ mod tests {
         }
 
         let round1_data = participants[0]
-            .get_received_round1_data()
+            .received_round1_data()
             .values()
             .cloned()
             .collect::<Vec<_>>();
         let public_key = participants[0]
-            .get_public_key()
+            .public_key()
             .expect("participant has public key");
         assert!(publicly_verify_dkg_results(&round1_data, &parameters, public_key).is_ok());
 
@@ -398,6 +395,76 @@ mod tests {
         too_many_records.push(round1_data[0].clone());
         let too_many = publicly_verify_dkg_results(&too_many_records, &parameters, public_key);
         assert!(matches!(too_many, Err(Error::Pvss(message)) if message.contains("Too many")));
+    }
+
+    #[test]
+    fn advance_produces_opaque_transport_messages() {
+        const THRESHOLD: usize = 2;
+        const LIMIT: usize = 3;
+
+        let parameters = Parameters::<k256::ProjectivePoint>::new(
+            NonZeroUsize::new(THRESHOLD).expect("threshold is non-zero"),
+            NonZeroUsize::new(LIMIT).expect("limit is non-zero"),
+            None,
+            None,
+        );
+        let mut participants = (1..=LIMIT)
+            .map(|id| {
+                SecretParticipant::<k256::ProjectivePoint>::new_secret(
+                    IdentifierPrimeField(k256::Scalar::from(id as u64)),
+                    &parameters,
+                )
+                .expect("create secret participant")
+            })
+            .collect::<Vec<_>>();
+
+        for round in [Round::One, Round::Two] {
+            let batches = participants
+                .iter_mut()
+                .map(
+                    |participant| match participant.advance().expect("advance participant") {
+                        AdvanceResult::Messages(messages) => messages,
+                        AdvanceResult::Complete => panic!("protocol completed too early"),
+                    },
+                )
+                .collect::<Vec<_>>();
+
+            for batch in batches {
+                match round {
+                    Round::One => {
+                        assert_eq!(batch.messages().len(), 1);
+                        assert!(matches!(
+                            batch.messages()[0].destination(),
+                            MessageDestination::Broadcast
+                        ));
+                    }
+                    Round::Two => {
+                        assert_eq!(batch.messages().len(), LIMIT - 1);
+                        assert!(batch.messages().iter().all(|message| matches!(
+                            message.destination(),
+                            MessageDestination::Direct { .. }
+                        )));
+                    }
+                    _ => unreachable!("only messaging rounds are tested here"),
+                }
+
+                for output in batch.into_per_recipient() {
+                    let recipient = &mut participants[output.dst_ordinal];
+                    assert_eq!(recipient.id(), output.dst_id);
+                    recipient
+                        .receive(&output.data)
+                        .expect("receive opaque protocol message");
+                }
+            }
+        }
+
+        for participant in &mut participants {
+            assert!(matches!(
+                participant.advance().expect("complete participant"),
+                AdvanceResult::Complete
+            ));
+        }
+        assert!(participants.iter().all(Participant::completed));
     }
 
     #[test]
@@ -456,10 +523,7 @@ mod tests {
 
         let shares = participants
             .iter()
-            .map(|p| {
-                p.get_secret_share()
-                    .expect("participant has a secret share")
-            })
+            .map(|p| p.secret_share().expect("participant has a secret share"))
             .collect::<Vec<_>>();
 
         let res = shares.combine();
@@ -469,7 +533,7 @@ mod tests {
         assert_eq!(secret.0, original_secret);
         assert_eq!(
             participants[1]
-                .get_public_key()
+                .public_key()
                 .expect("participant has public key"),
             public_key
         );

@@ -119,7 +119,7 @@ where
 
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT + INCREMENT).unwrap();
-    let mut pids = participants.iter().map(|p| p.get_id()).collect::<Vec<_>>();
+    let mut pids = participants.iter().map(|p| p.id()).collect::<Vec<_>>();
     pids.push(IdentifierPrimeField(G::Scalar::random(&mut rng)));
     pids.push(IdentifierPrimeField(G::Scalar::random(&mut rng)));
     let seq = vec![ParticipantIdGenerator::list(&pids)];
@@ -128,8 +128,8 @@ where
     let mut participants: [Box<dyn AnyParticipant<G>>; 7] = [
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[0].get_id(),
-                &participants[0].get_secret_share().unwrap(),
+                participants[0].id(),
+                &participants[0].secret_share().unwrap(),
                 &parameters,
                 &pids[..participants.len()],
             )
@@ -137,8 +137,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[1].get_id(),
-                &participants[1].get_secret_share().unwrap(),
+                participants[1].id(),
+                &participants[1].secret_share().unwrap(),
                 &parameters,
                 &pids[..participants.len()],
             )
@@ -146,8 +146,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[2].get_id(),
-                &participants[2].get_secret_share().unwrap(),
+                participants[2].id(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &pids[..participants.len()],
             )
@@ -155,8 +155,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[3].get_id(),
-                &participants[3].get_secret_share().unwrap(),
+                participants[3].id(),
+                &participants[3].secret_share().unwrap(),
                 &parameters,
                 &pids[..participants.len()],
             )
@@ -164,8 +164,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[4].get_id(),
-                &participants[4].get_secret_share().unwrap(),
+                participants[4].id(),
+                &participants[4].secret_share().unwrap(),
                 &parameters,
                 &pids[..participants.len()],
             )
@@ -182,14 +182,14 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
 
     let res = (&shares[..threshold.get()]).combine();
@@ -198,7 +198,7 @@ where
 
     let actual_pk = G::generator() * *new_secret;
 
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
@@ -216,9 +216,9 @@ where
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT).unwrap();
     let share_ids = [
-        participants[0].get_id(),
-        participants[2].get_id(),
-        participants[4].get_id(),
+        participants[0].id(),
+        participants[2].id(),
+        participants[4].id(),
     ];
     let seq = vec![ParticipantIdGenerator::list(share_ids.as_slice())];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
@@ -227,7 +227,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[0],
-                &participants[0].get_secret_share().unwrap(),
+                &participants[0].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -236,7 +236,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[1],
-                &participants[2].get_secret_share().unwrap(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -245,7 +245,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[2],
-                &participants[4].get_secret_share().unwrap(),
+                &participants[4].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -260,14 +260,14 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
 
     let res = shares.combine();
@@ -276,7 +276,7 @@ where
 
     let actual_pk = G::generator() * *new_secret;
 
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
@@ -295,9 +295,9 @@ where
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT + INCREMENT).unwrap();
     let share_ids = [
-        participants[1].get_id(),
-        participants[2].get_id(),
-        participants[3].get_id(),
+        participants[1].id(),
+        participants[2].id(),
+        participants[3].id(),
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
     ];
 
@@ -308,7 +308,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[0],
-                &participants[1].get_secret_share().unwrap(),
+                &participants[1].secret_share().unwrap(),
                 &parameters,
                 &share_ids[..3],
             )
@@ -317,7 +317,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[1],
-                &participants[2].get_secret_share().unwrap(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &share_ids[..3],
             )
@@ -326,7 +326,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[2],
-                &participants[3].get_secret_share().unwrap(),
+                &participants[3].secret_share().unwrap(),
                 &parameters,
                 &share_ids[..3],
             )
@@ -342,21 +342,21 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
     let res = shares.combine();
     assert!(res.is_ok());
     let new_secret = res.unwrap();
     let actual_pk = G::generator() * *new_secret;
 
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
@@ -376,9 +376,9 @@ where
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT + INCREMENT).unwrap();
     let share_ids = [
-        participants[1].get_id(),
-        participants[2].get_id(),
-        participants[4].get_id(),
+        participants[1].id(),
+        participants[2].id(),
+        participants[4].id(),
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
         IdentifierPrimeField(G::Scalar::random(&mut rng)),
@@ -390,7 +390,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[0],
-                &participants[1].get_secret_share().unwrap(),
+                &participants[1].secret_share().unwrap(),
                 &parameters,
                 &share_ids[..3],
             )
@@ -399,7 +399,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[1],
-                &participants[2].get_secret_share().unwrap(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &share_ids[..3],
             )
@@ -408,7 +408,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 share_ids[2],
-                &participants[4].get_secret_share().unwrap(),
+                &participants[4].secret_share().unwrap(),
                 &parameters,
                 &share_ids[..3],
             )
@@ -426,20 +426,20 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
     let res = shares.combine();
     assert!(res.is_ok());
     let new_secret = res.unwrap();
     let actual_pk = G::generator() * *new_secret;
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
@@ -482,14 +482,14 @@ where
 
     for i in 1..LIMIT {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
 
     let res = shares.combine();
@@ -497,7 +497,7 @@ where
     let secret = res.unwrap();
 
     assert_eq!(
-        participants[1].get_public_key().unwrap(),
+        participants[1].public_key().unwrap(),
         G::generator() * *secret
     );
 
@@ -532,47 +532,47 @@ where
 
     let threshold = NonZeroUsize::new(THRESHOLD).unwrap();
     let limit = NonZeroUsize::new(LIMIT).unwrap();
-    let pids = participants.iter().map(|p| p.get_id()).collect::<Vec<_>>();
+    let pids = participants.iter().map(|p| p.id()).collect::<Vec<_>>();
     let seq = vec![ParticipantIdGenerator::list(&pids)];
     let parameters = Parameters::<G>::new(threshold, limit, None, Some(seq));
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 5] = [
         Box::new(
             RefreshParticipant::<G>::new_refresh(
-                participants[0].get_id(),
-                participants[0].get_secret_share().map(|s| s.value.0),
+                participants[0].id(),
+                participants[0].secret_share().map(|s| s.value.0),
                 &parameters,
             )
             .unwrap(),
         ),
         Box::new(
             RefreshParticipant::<G>::new_refresh(
-                participants[1].get_id(),
-                participants[1].get_secret_share().map(|s| s.value.0),
+                participants[1].id(),
+                participants[1].secret_share().map(|s| s.value.0),
                 &parameters,
             )
             .unwrap(),
         ),
         Box::new(
             RefreshParticipant::<G>::new_refresh(
-                participants[2].get_id(),
-                participants[2].get_secret_share().map(|s| s.value.0),
+                participants[2].id(),
+                participants[2].secret_share().map(|s| s.value.0),
                 &parameters,
             )
             .unwrap(),
         ),
         Box::new(
             RefreshParticipant::<G>::new_refresh(
-                participants[3].get_id(),
-                participants[3].get_secret_share().map(|s| s.value.0),
+                participants[3].id(),
+                participants[3].secret_share().map(|s| s.value.0),
                 &parameters,
             )
             .unwrap(),
         ),
         Box::new(
             RefreshParticipant::<G>::new_refresh(
-                participants[4].get_id(),
-                participants[4].get_secret_share().map(|s| s.value.0),
+                participants[4].id(),
+                participants[4].secret_share().map(|s| s.value.0),
                 &parameters,
             )
             .unwrap(),
@@ -586,14 +586,14 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
 
     let res = shares.combine();
@@ -604,11 +604,11 @@ where
 
     let actual_pk = G::generator() * *new_secret;
 
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     assert_eq!(
         participants[0]
-            .get_public_key()
+            .public_key()
             .unwrap()
             .is_identity()
             .unwrap_u8(),
@@ -723,14 +723,14 @@ where
 
     for i in 1..LIMIT {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
 
     let res = shares.combine();
@@ -738,14 +738,14 @@ where
     let secret = res.unwrap();
 
     assert_eq!(
-        participants[1].get_public_key().unwrap(),
+        participants[1].public_key().unwrap(),
         G::generator() * *secret
     );
 
     // publicly verify secret sharing DKG result
     for participant in participants.iter() {
         let round1_data: Vec<Round1Data<G>> = participant
-            .get_received_round1_data()
+            .received_round1_data()
             .values()
             .cloned()
             .collect();
@@ -753,7 +753,7 @@ where
             publicly_verify_dkg_results(
                 &round1_data,
                 &parameters,
-                participant.get_public_key().unwrap(),
+                participant.public_key().unwrap(),
             )
             .is_ok()
         );
@@ -775,7 +775,7 @@ where
 
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT + INCREMENT).unwrap();
-    let pids = participants.iter().map(|p| p.get_id()).collect::<Vec<_>>();
+    let pids = participants.iter().map(|p| p.id()).collect::<Vec<_>>();
     let seq = vec![
         ParticipantIdGenerator::list(&pids),
         ParticipantIdGenerator::sequential(
@@ -789,8 +789,8 @@ where
     let mut participants: [Box<dyn AnyParticipant<G>>; 7] = [
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[0].get_id(),
-                &participants[0].get_secret_share().unwrap(),
+                participants[0].id(),
+                &participants[0].secret_share().unwrap(),
                 &parameters,
                 &pids,
             )
@@ -798,8 +798,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[1].get_id(),
-                &participants[1].get_secret_share().unwrap(),
+                participants[1].id(),
+                &participants[1].secret_share().unwrap(),
                 &parameters,
                 &pids,
             )
@@ -807,8 +807,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[2].get_id(),
-                &participants[2].get_secret_share().unwrap(),
+                participants[2].id(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &pids,
             )
@@ -816,8 +816,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[3].get_id(),
-                &participants[3].get_secret_share().unwrap(),
+                participants[3].id(),
+                &participants[3].secret_share().unwrap(),
                 &parameters,
                 &pids,
             )
@@ -825,8 +825,8 @@ where
         ),
         Box::new(
             SecretParticipant::<G>::with_secret(
-                participants[4].get_id(),
-                &participants[4].get_secret_share().unwrap(),
+                participants[4].id(),
+                &participants[4].secret_share().unwrap(),
                 &parameters,
                 &pids,
             )
@@ -857,14 +857,14 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
 
     let res = shares.combine();
@@ -873,7 +873,7 @@ where
 
     let actual_pk = G::generator() * *new_secret;
 
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
@@ -903,7 +903,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(1)),
-                &participants[0].get_secret_share().unwrap(),
+                &participants[0].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -912,7 +912,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(2)),
-                &participants[2].get_secret_share().unwrap(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -921,7 +921,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(3)),
-                &participants[3].get_secret_share().unwrap(),
+                &participants[3].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -936,14 +936,14 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
 
     let res = shares.combine();
@@ -952,7 +952,7 @@ where
 
     let actual_pk = G::generator() * *new_secret;
 
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
@@ -974,16 +974,16 @@ where
     let parameters = Parameters::<G>::new(threshold, limit, None, None);
 
     let share_ids = [
-        participants[1].get_id(),
-        participants[2].get_id(),
-        participants[3].get_id(),
+        participants[1].id(),
+        participants[2].id(),
+        participants[3].id(),
     ];
 
     let mut participants: [Box<dyn AnyParticipant<G>>; 4] = [
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(1)),
-                &participants[1].get_secret_share().unwrap(),
+                &participants[1].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -992,7 +992,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(2)),
-                &participants[2].get_secret_share().unwrap(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -1001,7 +1001,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(3)),
-                &participants[3].get_secret_share().unwrap(),
+                &participants[3].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -1024,21 +1024,21 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
     let res = shares.combine();
     assert!(res.is_ok());
     let new_secret = res.unwrap();
     let actual_pk = G::generator() * *new_secret;
 
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
@@ -1058,9 +1058,9 @@ where
     let threshold = NonZeroUsize::new(threshold).unwrap();
     let limit = NonZeroUsize::new(LIMIT + INCREMENT).unwrap();
     let share_ids = [
-        participants[1].get_id(),
-        participants[2].get_id(),
-        participants[4].get_id(),
+        participants[1].id(),
+        participants[2].id(),
+        participants[4].id(),
     ];
     let parameters = Parameters::<G>::new(threshold, limit, None, None);
 
@@ -1068,7 +1068,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(1)),
-                &participants[1].get_secret_share().unwrap(),
+                &participants[1].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -1077,7 +1077,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(2)),
-                &participants[2].get_secret_share().unwrap(),
+                &participants[2].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -1086,7 +1086,7 @@ where
         Box::new(
             SecretParticipant::<G>::with_secret(
                 IdentifierPrimeField(G::Scalar::from(3)),
-                &participants[4].get_secret_share().unwrap(),
+                &participants[4].secret_share().unwrap(),
                 &parameters,
                 &share_ids,
             )
@@ -1125,27 +1125,27 @@ where
 
     for i in 1..participants.len() {
         assert_eq!(
-            participants[i - 1].get_public_key().unwrap(),
-            participants[i].get_public_key().unwrap()
+            participants[i - 1].public_key().unwrap(),
+            participants[i].public_key().unwrap()
         );
     }
 
     let shares = participants
         .iter()
-        .map(|p| p.get_secret_share().unwrap())
+        .map(|p| p.secret_share().unwrap())
         .collect::<Vec<_>>();
     let res = shares.combine();
     assert!(res.is_ok());
     let new_secret = res.unwrap();
     let actual_pk = G::generator() * *new_secret;
-    assert_eq!(participants[0].get_public_key().unwrap(), actual_pk);
+    assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
     // Old shared secret remains unchanged
     assert_eq!(secret, *new_secret);
 
-    let transcript_hash = participants[0].get_final_transcript_hash();
+    let transcript_hash = participants[0].final_transcript_hash();
     for participant in participants.iter().skip(1) {
-        assert_eq!(participant.get_final_transcript_hash(), transcript_hash);
+        assert_eq!(participant.final_transcript_hash(), transcript_hash);
     }
 }
 
@@ -1178,8 +1178,8 @@ fn receive<G>(
         } in round_generator.iter()
         {
             if let Some(participant) = participants.get_mut(ordinal) {
-                assert_eq!(participant.get_ordinal(), ordinal);
-                assert_eq!(participant.get_id(), id);
+                assert_eq!(participant.ordinal(), ordinal);
+                assert_eq!(participant.id(), id);
                 let res = participant.receive(data.as_slice());
                 assert!(res.is_ok());
             }
