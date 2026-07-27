@@ -41,8 +41,8 @@ use elliptic_curve::{
     subtle::{Choice, ConditionallySelectable},
 };
 use elliptic_curve_tools::SumOfProducts;
-use std::collections::BTreeMap;
-use vsss_rs::{IdentifierPrimeField, ShareVerifierGroup};
+use std::collections::{BTreeMap, BTreeSet};
+use vsss_rs::{IdentifierPrimeField, ParticipantIdGeneratorCollection, ShareVerifierGroup};
 
 /// Round1 data represent all the broadcast information. Using this
 /// anyone can publicly verify the output of the DKG.
@@ -57,25 +57,47 @@ where
 {
     // This is essentially performing the same checks as round1::Participant::receive_round1data
     // but also checks that the computed public matches from the commitments
-    let rng = rand::rng();
-    let dummy_shares =
-        vsss_rs::shamir::split_secret_with_participant_generators::<SecretShare<G::Scalar>>(
+    if round1_data.len() < parameters.threshold {
+        return Err(Error::Pvss(format!(
+            "Not enough round 1 records. Expected at least {}, found {}",
             parameters.threshold,
+            round1_data.len()
+        )));
+    }
+    if round1_data.len() > parameters.limit {
+        return Err(Error::Pvss(format!(
+            "Too many round 1 records. Expected at most {}, found {}",
             parameters.limit,
-            &IdentifierPrimeField(G::Scalar::ZERO),
-            rng,
-            &parameters.participant_number_generators,
-        )?;
-    let all_participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>> = dummy_shares
-        .iter()
-        .enumerate()
-        .map(|(i, s)| (i, s.identifier))
-        .collect();
+            round1_data.len()
+        )));
+    }
+
+    let all_participant_ids: BTreeMap<usize, IdentifierPrimeField<G::Scalar>> =
+        ParticipantIdGeneratorCollection::from(&parameters.participant_number_generators)
+            .iter()
+            .take(parameters.limit)
+            .enumerate()
+            .collect();
+    if all_participant_ids.len() != parameters.limit {
+        return Err(Error::Pvss(format!(
+            "Participant ID generators produced {} identifiers, expected {}",
+            all_participant_ids.len(),
+            parameters.limit
+        )));
+    }
 
     let mut computed_public_key = G::default();
     let mut all_refresh = true;
+    let mut sender_ordinals = BTreeSet::new();
 
     for (i, round1_data) in round1_data.iter().enumerate() {
+        if !sender_ordinals.insert(round1_data.sender_ordinal) {
+            return Err(Error::Pvss(format!(
+                "Data at {} duplicates sender ordinal {}",
+                i + 1,
+                round1_data.sender_ordinal
+            )));
+        }
         let Some(id) = all_participant_ids.get(&round1_data.sender_ordinal) else {
             return Err(Error::Pvss(format!(
                 "Data at {} doesn't exist in the set of participants",
@@ -91,6 +113,12 @@ where
         if id.is_zero().into() {
             return Err(Error::Pvss(format!(
                 "Data at {} contains an id that is zero",
+                i + 1
+            )));
+        }
+        if round1_data.feldman_commitments.is_empty() {
+            return Err(Error::Pvss(format!(
+                "Data at {} has no Feldman commitments",
                 i + 1
             )));
         }
@@ -291,6 +319,76 @@ mod tests {
                 .expect("participant has public key"),
             expected_pk
         );
+    }
+
+    #[test]
+    fn public_verification_rejects_invalid_record_sets() {
+        const THRESHOLD: usize = 2;
+        const LIMIT: usize = 3;
+
+        let parameters = Parameters::<k256::ProjectivePoint>::new(
+            NonZeroUsize::new(THRESHOLD).expect("threshold is non-zero"),
+            NonZeroUsize::new(LIMIT).expect("limit is non-zero"),
+            None,
+            None,
+        );
+        let mut participants = (1..=LIMIT)
+            .map(|id| {
+                SecretParticipant::<k256::ProjectivePoint>::new_secret(
+                    IdentifierPrimeField(k256::Scalar::from(id as u64)),
+                    &parameters,
+                )
+                .expect("create secret participant")
+            })
+            .collect::<Vec<_>>();
+
+        for _ in [Round::One, Round::Two, Round::Three] {
+            let generators = next_round(&mut participants);
+            receive(&mut participants, generators);
+        }
+
+        let round1_data = participants[0]
+            .get_received_round1_data()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        let public_key = participants[0]
+            .get_public_key()
+            .expect("participant has public key");
+        assert!(publicly_verify_dkg_results(&round1_data, &parameters, public_key).is_ok());
+
+        let threshold_records = &round1_data[..THRESHOLD];
+        let threshold_public_key = threshold_records
+            .iter()
+            .map(|data| data.feldman_commitments[0].0)
+            .sum();
+        assert!(
+            publicly_verify_dkg_results(threshold_records, &parameters, threshold_public_key)
+                .is_ok()
+        );
+
+        let too_few =
+            publicly_verify_dkg_results(&round1_data[..THRESHOLD - 1], &parameters, public_key);
+        assert!(matches!(too_few, Err(Error::Pvss(message)) if message.contains("Not enough")));
+
+        let duplicate_records = vec![round1_data[0].clone(), round1_data[0].clone()];
+        let duplicate = publicly_verify_dkg_results(&duplicate_records, &parameters, public_key);
+        assert!(
+            matches!(duplicate, Err(Error::Pvss(message)) if message.contains("duplicates sender ordinal"))
+        );
+
+        let mut empty_commitments = round1_data[..THRESHOLD].to_vec();
+        empty_commitments[0].feldman_commitments.clear();
+        let empty =
+            publicly_verify_dkg_results(&empty_commitments, &parameters, threshold_public_key);
+        assert!(
+            matches!(empty, Err(Error::Pvss(message)) if message.contains("no Feldman commitments"))
+        );
+
+        let mut too_many_records = round1_data.clone();
+        too_many_records.push(round1_data[0].clone());
+        let too_many = publicly_verify_dkg_results(&too_many_records, &parameters, public_key);
+        assert!(matches!(too_many, Err(Error::Pvss(message)) if message.contains("Too many")));
     }
 
     #[test]
