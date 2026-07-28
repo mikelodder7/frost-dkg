@@ -6,7 +6,7 @@ use super::*;
 use elliptic_curve::group::GroupEncoding;
 use elliptic_curve::subtle::ConditionallySelectable;
 use elliptic_curve::{Field, Group};
-use elliptic_curve_tools::SumOfProducts;
+use elliptic_curve_tools::{SumOfProducts, group, prime_field, prime_field_vec};
 use rand_core::CryptoRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -83,7 +83,13 @@ where
     fn check_feldman_verifier(verifier: G) -> bool;
 }
 
-/// A DKG participant FSM
+/// A DKG participant FSM.
+///
+/// This type contains secret key material. Its serialized representation is
+/// plaintext and must only be stored or transported using authenticated
+/// encryption or an equivalently protected mechanism. Deserializing
+/// unauthenticated participant state can violate protocol invariants.
+#[derive(Serialize, Deserialize)]
 pub struct Participant<I, G>
 where
     I: ParticipantImpl<G> + Default,
@@ -91,22 +97,62 @@ where
     G::Scalar: ScalarHash,
 {
     pub(crate) ordinal: usize,
+    #[serde(bound(
+        serialize = "IdentifierPrimeField<G::Scalar>: Serialize",
+        deserialize = "IdentifierPrimeField<G::Scalar>: Deserialize<'de>"
+    ))]
     pub(crate) id: IdentifierPrimeField<G::Scalar>,
     pub(crate) threshold: usize,
     pub(crate) limit: usize,
     pub(crate) round: Round,
     pub(crate) completed: bool,
+    #[serde(bound(
+        serialize = "SecretShare<G::Scalar>: Serialize",
+        deserialize = "SecretShare<G::Scalar>: Deserialize<'de>"
+    ))]
     pub(crate) secret_shares: Vec<SecretShare<G::Scalar>>,
+    #[serde(bound(
+        serialize = "ValueGroup<G>: Serialize",
+        deserialize = "ValueGroup<G>: Deserialize<'de>"
+    ))]
     pub(crate) feldman_verifiers: Vec<ValueGroup<G>>,
+    #[serde(with = "prime_field")]
     pub(crate) original_secret: G::Scalar,
+    #[serde(with = "group")]
     pub(crate) verifying_share: G,
+    #[serde(bound(
+        serialize = "SecretShare<G::Scalar>: Serialize",
+        deserialize = "SecretShare<G::Scalar>: Deserialize<'de>"
+    ))]
     pub(crate) secret_share: SecretShare<G::Scalar>,
+    #[serde(with = "group")]
     pub(crate) message_generator: G,
+    #[serde(bound(
+        serialize = "ValueGroup<G>: Serialize",
+        deserialize = "ValueGroup<G>: Deserialize<'de>"
+    ))]
     pub(crate) public_key: ValueGroup<G>,
+    #[serde(with = "prime_field_vec")]
     pub(crate) powers_of_i: Vec<G::Scalar>,
+    #[serde(bound(
+        serialize = "Round1Data<G>: Serialize",
+        deserialize = "Round1Data<G>: Deserialize<'de>"
+    ))]
     pub(crate) received_round1_data: Vec<Option<Round1Data<G>>>,
+    #[serde(bound(
+        serialize = "Round2Data<G::Scalar>: Serialize",
+        deserialize = "Round2Data<G::Scalar>: Deserialize<'de>"
+    ))]
     pub(crate) received_round2_data: Vec<Option<Round2Data<G::Scalar>>>,
+    #[serde(bound(
+        serialize = "IdentifierPrimeField<G::Scalar>: Serialize",
+        deserialize = "IdentifierPrimeField<G::Scalar>: Deserialize<'de>"
+    ))]
     pub(crate) all_participant_ids: Vec<IdentifierPrimeField<G::Scalar>>,
+    #[serde(bound(
+        serialize = "IdentifierPrimeField<G::Scalar>: Serialize",
+        deserialize = "IdentifierPrimeField<G::Scalar>: Deserialize<'de>"
+    ))]
     pub(crate) valid_participant_ids: Vec<Option<IdentifierPrimeField<G::Scalar>>>,
     pub(crate) participant_impl: I,
 }
