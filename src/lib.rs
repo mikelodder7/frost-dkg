@@ -2,7 +2,7 @@
     Copyright Michael Lodder. All Rights Reserved.
     SPDX-License-Identifier: Apache-2.0
 */
-//! Frost Distributed Key Generation Algorithm.
+//! The FROST Distributed Key Generation protocol.
 //!
 //! The full paper can be found [here](https://eprint.iacr.org/2020/852.pdf).
 
@@ -44,8 +44,7 @@ use elliptic_curve_tools::SumOfProducts;
 use std::collections::BTreeSet;
 use vsss_rs::{IdentifierPrimeField, ParticipantIdGeneratorCollection, ShareVerifierGroup};
 
-/// Round1 data represent all the broadcast information. Using this
-/// anyone can publicly verify the output of the DKG.
+/// Round 1 broadcast data used to publicly verify a DKG output.
 pub fn publicly_verify_dkg_results<G>(
     round1_data: &[Round1Data<G>],
     parameters: &Parameters<G>,
@@ -55,8 +54,8 @@ where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    // This is essentially performing the same checks as round1::Participant::receive_round1data
-    // but also checks that the computed public matches from the commitments
+    // Perform the same checks as `Participant::receive_round1data`, then also
+    // check that the public key computed from the commitments matches.
     if round1_data.len() < parameters.threshold {
         return Err(Error::Pvss(format!(
             "Not enough round 1 records. Expected at least {}, found {}",
@@ -99,19 +98,19 @@ where
         }
         let Some(id) = all_participant_ids.get(round1_data.sender_ordinal) else {
             return Err(Error::Pvss(format!(
-                "Data at {} doesn't exist in the set of participants",
+                "Data at {} does not exist in the set of participants",
                 i + 1
             )));
         };
         if *id != round1_data.sender_id {
             return Err(Error::Pvss(format!(
-                "Data at {} doesn't match the expected sender id",
+                "Data at {} does not match the expected sender ID",
                 i + 1
             )));
         }
         if id.is_zero().into() {
             return Err(Error::Pvss(format!(
-                "Data at {} contains an id that is zero",
+                "Data at {} contains an ID that is zero",
                 i + 1
             )));
         }
@@ -135,7 +134,7 @@ where
             .into()
         {
             return Err(Error::Pvss(format!(
-                "Data at {} has an feldman commitment that are the identity element which is not allowed",
+                "Data at {} has a Feldman commitment that is the identity element, which is not allowed",
                 i + 1
             )));
         }
@@ -153,7 +152,7 @@ where
 
         if !feldman_valid {
             return Err(Error::Pvss(format!(
-                "Data at {} has an invalid feldman commitment for its participant type",
+                "Data at {} has an invalid Feldman commitment for its participant type",
                 i + 1
             )));
         }
@@ -187,7 +186,7 @@ where
 
     if computed_public_key != public_key {
         return Err(Error::Pvss(format!(
-            "The public keys do not match: Expected {}, computed {}",
+            "The public keys do not match: expected {}, computed {}",
             hex::encode(public_key.to_bytes()),
             hex::encode(computed_public_key.to_bytes())
         )));
@@ -226,7 +225,7 @@ where
         *context.message_generator * signature.s - *context.verifying_share * challenge;
     if signature.r != computed_r {
         return Err(Error::Round(format!(
-            "Round {}: Received invalid round 1 signature proof from ordinal: '{}', id: '{:?}'",
+            "Round {}: received an invalid round 1 signature proof from ordinal '{}', ID '{:?}'",
             Round::One,
             context.ordinal,
             context.id,
@@ -243,7 +242,7 @@ where
     let mut bytes = Vec::with_capacity(512);
     // ID
     bytes.extend_from_slice(context.id.0.to_repr().as_ref());
-    // Add these for domain separation to prevent replay attacks
+    // Add these values for domain separation to prevent replay attacks.
     bytes.extend_from_slice(&(context.ordinal as u16).to_be_bytes());
     bytes.extend_from_slice(&u16::from(*context.participant_type).to_be_bytes());
     bytes.extend_from_slice(&(context.threshold as u16).to_be_bytes());
@@ -252,11 +251,11 @@ where
     for id in context.all_participant_ids {
         bytes.extend_from_slice(id.0.to_repr().as_ref());
     }
-    // Add the R_i
+    // Add R_i.
     bytes.extend_from_slice(r_i.to_bytes().as_ref());
-    // Add the verifying share
+    // Add the verifying share.
     bytes.extend_from_slice(context.verifying_share.to_bytes().as_ref());
-    // Add the verifiers
+    // Add the verifiers.
     for vf in context.feldman_verifiers {
         bytes.extend_from_slice(vf.0.to_bytes().as_ref());
     }

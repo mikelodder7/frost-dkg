@@ -78,7 +78,7 @@ where
     pub(crate) fn receive_round1data(&mut self, data: Round1Data<G>) -> DkgResult<()> {
         if self.round > Round::Two {
             return Err(Error::Round(format!(
-                "Round {}: Invalid round payload received",
+                "Round {}: invalid round payload received",
                 Round::One
             )));
         }
@@ -88,20 +88,20 @@ where
             .is_some_and(Option::is_some)
         {
             return Err(Error::Round(format!(
-                "Round: {}, Sender has already sent data",
+                "Round {}: sender has already sent data",
                 Round::One
             )));
         }
         self.check_sending_participant_id(Round::One, data.sender_ordinal, data.sender_id)?;
         if data.feldman_commitments.is_empty() {
             return Err(Error::Round(format!(
-                "Round: {}, Feldman commitments are empty",
+                "Round {}: Feldman commitments are empty",
                 Round::One
             )));
         }
         if data.feldman_commitments.len() != self.threshold {
             return Err(Error::Round(format!(
-                "Round: {}, Feldman commitments length is not equal to threshold",
+                "Round {}: Feldman commitment count does not equal the threshold",
                 Round::One
             )));
         }
@@ -111,7 +111,7 @@ where
             .into()
         {
             return Err(Error::Round(format!(
-                "Round: {}, Feldman commitments contain the identity point",
+                "Round {}: Feldman commitments contain the identity point",
                 Round::One
             )));
         }
@@ -127,7 +127,7 @@ where
         };
         if !feldman_valid {
             return Err(Error::Round(format!(
-                "Round: {}, Feldman commitment is not a valid verifier",
+                "Round {}: Feldman commitment is not a valid verifier",
                 Round::One
             )));
         }

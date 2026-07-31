@@ -84,9 +84,9 @@ dependencies = [
 
 [[package]]
 name = "bls12_381_plus"
-version = "0.9.0-rc1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7193f506a293c0ed50e4a5c4c43a75fbbf4a6b8cd8d01034daaf86bff40bb0af"
+checksum = "ce4b3b2955c1b4392aa08b53494bbd282048179a971b8e33dab8c0331daf8eeb"
 dependencies = [
  "arrayref",
  "elliptic-curve 0.13.8",
@@ -106,9 +106,9 @@ dependencies = [
 
 [[package]]
 name = "blstrs_plus"
-version = "0.9.0-rc1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae118e22a5f89f6ea13abcf03acc8cadb766febe0095522239bc542b2a77fc84"
+checksum = "e4fedb991613af9ef3a2997be47f3f9cfafdfe74621550a13c9c7adaa10b072a"
 dependencies = [
  "arrayref",
  "elliptic-curve 0.13.8",
@@ -446,7 +446,7 @@ checksum = "64cd1e32ddd350061ae6edb1b082d7c54915b5c672c389143b9a63403a109f24"
 
 [[package]]
 name = "frost-dkg"
-version = "0.6.0-rc6"
+version = "0.6.0"
 dependencies = [
  "bls12_381_plus",
  "blstrs_plus",
@@ -1138,9 +1138,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vsss-rs"
-version = "6.0.0-rc9"
+version = "6.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f72fbe6462d349ec7c7d68aa147d976ab558d1234ea4b9c20b094b3083bd732e"
+checksum = "d6bfc736cfd88115aedb95ba84bc2d428fe351e92a56f69fce090af301402d91"
 dependencies = [
  "crypto-bigint 0.7.5",
  "elliptic-curve 0.14.1",

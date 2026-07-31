@@ -22,7 +22,7 @@ where
     pub(crate) fn round3(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round3_ready() {
             return Err(Error::Round(format!(
-                "Round 3 is not ready, haven't received enough data from other participants. Need {} more",
+                "Round 3 is not ready: not enough data has been received from other participants; need {} more",
                 self.threshold - self.received_round2_data.iter().flatten().count()
             )));
         }
@@ -38,7 +38,7 @@ where
             .and_then(Option::as_ref)
             .ok_or_else(|| {
                 Error::Round(format!(
-                    "Round {}: Self doesn't have round 2 data",
+                    "Round {}: participant does not have its own round 2 data",
                     Round::Three
                 ))
             })?
@@ -52,7 +52,7 @@ where
             };
             let round1data = self.received_round1_data[ordinal].as_ref().ok_or_else(|| {
                 Error::Round(format!(
-                    "Round {}: Sender has not sent round 1 data",
+                    "Round {}: sender has not sent round 1 data",
                     Round::Three
                 ))
             })?;

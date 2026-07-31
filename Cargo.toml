@@ -1,17 +1,18 @@
 [package]
 authors = ["Michael Lodder <redmike7@gmail.com>"]
 categories = ["cryptography"]
-description = "An implementation for the Frost Distributed Key Generation protocol"
+description = "An implementation of the FROST Distributed Key Generation protocol"
 documentation = "https://docs.rs/frost-dkg"
 edition = "2024"
-exclude = ["tests/**", "benches/**", "examples/**", ".github/**"]
+rust-version = "1.87"
+exclude = ["benches/**", "examples/**", ".github/**"]
 homepage = "https://crates.io/crates/frost-dkg"
 keywords = ["dkg", "key", "generation", "distributed", "frost"]
 license = "Apache-2.0 OR MIT"
 name = "frost-dkg"
 readme = "README.md"
 repository = "https://github.com/mikelodder7/frost-dkg"
-version = "0.6.0-rc6"
+version = "0.6.0"
 
 [features]
 default = [
@@ -42,10 +43,10 @@ rand_core = "0.10"
 serde = "1.0"
 thiserror = "2.0"
 postcard = { version = "1.1", default-features = false, features = ["use-std"] }
-vsss-rs = { version = "6.0.0-rc9", default-features = false, features = ["alloc", "curve-serde", "zeroize"] }
+vsss-rs = { version = "6.0.1", default-features = false, features = ["alloc", "curve-serde", "zeroize"] }
 
-bls12_381_plus = { version = "0.9.0-rc1", default-features = false, features = ["alloc", "expose-fields"], optional = true }
-blstrs_plus = { version = "0.9.0-rc1", default-features = false, features = ["alloc", "expose-fields"], optional = true }
+bls12_381_plus = { version = "0.9.0", default-features = false, features = ["alloc", "expose-fields"], optional = true }
+blstrs_plus = { version = "0.9.0", default-features = false, features = ["alloc", "expose-fields"], optional = true }
 curve25519-dalek = { version = "5.0.0", features = ["digest", "ff", "group"], optional = true }
 ed448-goldilocks-plus = { version = "0.18.0", optional = true }
 k256 = { version = "0.14.0", default-features = false, features = ["arithmetic", "hash2curve"], optional = true }

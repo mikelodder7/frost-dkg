@@ -15,8 +15,8 @@ mod tp384;
 
 use elliptic_curve::PrimeField;
 
-/// A trait for hashing a scalar
+/// A trait for hashing bytes to a scalar.
 pub trait ScalarHash: PrimeField {
-    /// Hash a scalar
+    /// Hash bytes to a scalar.
     fn hash_to_scalar(bytes: &[u8]) -> Self;
 }

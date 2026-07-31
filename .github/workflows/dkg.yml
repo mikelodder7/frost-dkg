@@ -2,7 +2,7 @@ name: dkg
 
 on:
   pull_request:
-    paths-ignore: 
+    paths-ignore:
       - README.md
       - SECURITY.md
       - LICENSE-APACHE
@@ -31,6 +31,15 @@ defaults:
     shell: bash
 
 jobs:
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.87"
+      - run: cargo check --all-features
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -39,7 +48,6 @@ jobs:
         with:
           toolchain: stable
       - run: cargo build --all-features
-
 
   test:
     runs-on: ubuntu-latest
@@ -57,8 +65,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - uses: cargo-bins/cargo-binstall@v1.21.1
       - run: cargo binstall --no-confirm cargo-careful
-      - run: cargo careful test tests --release
-        
+      - run: cargo careful test --all-features --release
+
   clippy:
     runs-on: ubuntu-latest
     steps:

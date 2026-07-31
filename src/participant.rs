@@ -17,16 +17,16 @@ use vsss_rs::{
     ValuePrimeField, subtle::ConstantTimeEq,
 };
 
-/// Secret Participant type
+/// A participant that contributes a secret.
 pub type SecretParticipant<G> = Participant<SecretParticipantImpl<G>, G>;
 
-/// Refresh Participant type
+/// A participant that refreshes an existing sharing.
 pub type RefreshParticipant<G> = Participant<RefreshParticipantImpl<G>, G>;
 
-/// The inner share representation
+/// The inner share representation.
 pub type SecretShare<F> = DefaultShare<IdentifierPrimeField<F>, IdentifierPrimeField<F>>;
 
-/// The inner feldman share verifiers
+/// The inner Feldman share verifiers.
 pub type FeldmanShareVerifier<G> = ShareVerifierGroup<G>;
 
 /// A validated set of participant identifiers used to reconstruct a secret.
@@ -67,23 +67,24 @@ impl<'a, F: ScalarHash> ReconstructionSet<'a, F> {
     }
 }
 
-/// Participant implementation
+/// The participant implementation.
 pub trait ParticipantImpl<G>
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// Get the participant type
+    /// Get the participant type.
     fn get_type(&self) -> ParticipantType;
-    /// Get the participants secret
+    /// Get the participant's secret.
     fn random_value(rng: impl CryptoRng) -> G::Scalar;
-    /// Check the feldman verifier at position 0.
-    /// During a new or update key gen, this value is not the identity
-    /// during a refresh, it must be identity
+    /// Check the Feldman verifier at position 0.
+    ///
+    /// During new key generation or an update, this value is not the identity;
+    /// during a refresh, it must be the identity.
     fn check_feldman_verifier(verifier: G) -> bool;
 }
 
-/// A DKG participant FSM.
+/// A DKG participant finite-state machine.
 ///
 /// This type contains secret key material. Its serialized representation is
 /// plaintext and must only be stored or transported using authenticated
@@ -183,7 +184,7 @@ where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// Create a new participant to generate a new key share
+    /// Create a participant that generates a new key share.
     pub fn new_secret(
         id: IdentifierPrimeField<G::Scalar>,
         parameters: &Parameters<G>,
@@ -193,9 +194,9 @@ where
         Self::initialize(id, parameters, IdentifierPrimeField(secret), None)
     }
 
-    /// Create a new participant with an existing secret.
+    /// Create a participant with an existing secret share.
     ///
-    /// This allows the polynomial to be updated versus refreshing the shares.
+    /// This updates the polynomial instead of only refreshing the shares.
     pub fn with_secret(
         new_identifier: IdentifierPrimeField<G::Scalar>,
         old_share: &SecretShare<G::Scalar>,
@@ -222,10 +223,10 @@ where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// Create a new participant to refresh an existing key share if it exists.
+    /// Create a participant that refreshes an existing key share, if supplied.
     ///
-    /// If the share does not exist, assumes there are other participants
-    /// that do possess a valid share of the original secret
+    /// If no share is supplied, other participants must possess valid shares of
+    /// the original secret.
     pub fn new_refresh(
         id: IdentifierPrimeField<G::Scalar>,
         existing_share: Option<&SecretShare<G::Scalar>>,
@@ -298,7 +299,7 @@ where
             || !I::check_feldman_verifier(*verifiers[0])
         {
             return Err(Error::Initialization(
-                "Invalid feldman verifier".to_string(),
+                "Invalid Feldman verifier".to_string(),
             ));
         }
 
@@ -307,7 +308,7 @@ where
             .position(|s| s.identifier == id)
             .ok_or_else(|| {
                 Error::Initialization(format!(
-                    "Invalid participant id '{id}'. Not in generated set of shares"
+                    "Invalid participant ID '{id}'; it is not in the generated set of shares"
                 ))
             })?;
 
@@ -339,39 +340,39 @@ where
         })
     }
 
-    /// The ordinal index of this participant
+    /// The ordinal index of this participant.
     pub fn ordinal(&self) -> usize {
         self.ordinal
     }
 
-    /// The identifier associated with this participant
+    /// The identifier associated with this participant.
     pub fn id(&self) -> IdentifierPrimeField<G::Scalar> {
         self.id
     }
 
-    /// Returns true if this secret_participant is complete
+    /// Return whether this participant has completed the protocol.
     pub fn completed(&self) -> bool {
         self.completed
     }
 
-    /// Return the current round
+    /// Return the current round.
     pub fn round(&self) -> Round {
         self.round
     }
 
-    /// Return the set threshold
+    /// Return the configured threshold.
     pub fn threshold(&self) -> usize {
         self.threshold
     }
 
-    /// Return the set limit
+    /// Return the configured participant limit.
     pub fn limit(&self) -> usize {
         self.limit
     }
 
     /// Computed secret share.
-    /// This value is useless until at least 2 rounds have been run
-    /// so [`None`] is returned until completion
+    /// This value is unavailable until at least two rounds have run, so [`None`]
+    /// is returned until completion.
     pub fn secret_share(&self) -> Option<SecretShare<G::Scalar>> {
         if self.completed {
             Some(self.secret_share)
@@ -380,9 +381,10 @@ where
         }
     }
 
-    /// Computed public key
-    /// This value is useless until all rounds have been run
-    /// so [`None`] is returned until completion
+    /// Computed public key.
+    ///
+    /// This value is unavailable until every round has run, so [`None`] is
+    /// returned until completion.
     pub fn public_key(&self) -> Option<G> {
         if self.completed {
             Some(*self.public_key)
@@ -391,27 +393,27 @@ where
         }
     }
 
-    /// Return the list of all participants that started the protocol
+    /// Return all participants that started the protocol.
     pub fn all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>] {
         &self.all_participant_ids
     }
 
-    /// Return the list of valid participant ids
+    /// Return the valid participant IDs.
     pub fn valid_participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>] {
         &self.valid_participant_ids
     }
 
-    /// Return the feldman verifiers
+    /// Return the Feldman verifiers.
     pub fn feldman_verifiers(&self) -> &[ShareVerifierGroup<G>] {
         &self.feldman_verifiers
     }
 
-    /// Get the received round 1 data so far
+    /// Get the round 1 data received so far.
     pub fn received_round1_data(&self) -> &[Option<Round1Data<G>>] {
         &self.received_round1_data
     }
 
-    /// Get the received round 2 data so far
+    /// Get the round 2 data received so far.
     pub fn received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>] {
         &self.received_round2_data
     }
@@ -465,13 +467,13 @@ where
         self.round()
     }
 
-    /// Return the set threshold.
+    /// Return the configured threshold.
     #[deprecated(since = "0.6.0", note = "use `threshold` instead")]
     pub fn get_threshold(&self) -> usize {
         self.threshold()
     }
 
-    /// Return the set limit.
+    /// Return the configured participant limit.
     #[deprecated(since = "0.6.0", note = "use `limit` instead")]
     pub fn get_limit(&self) -> usize {
         self.limit()
@@ -489,13 +491,13 @@ where
         self.public_key()
     }
 
-    /// Return the list of all participants that started the protocol.
+    /// Return all participants that started the protocol.
     #[deprecated(since = "0.6.0", note = "use `all_participant_ids` instead")]
     pub fn get_all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>] {
         self.all_participant_ids()
     }
 
-    /// Return the list of valid participant IDs.
+    /// Return the valid participant IDs.
     #[deprecated(since = "0.6.0", note = "use `valid_participant_ids` instead")]
     pub fn get_valid_participant_ids(&self) -> &[Option<IdentifierPrimeField<G::Scalar>>] {
         self.valid_participant_ids()
@@ -507,19 +509,19 @@ where
         self.feldman_verifiers().to_vec()
     }
 
-    /// Get the received round 1 data so far.
+    /// Get the round 1 data received so far.
     #[deprecated(since = "0.6.0", note = "use `received_round1_data` instead")]
     pub fn get_received_round1_data(&self) -> &[Option<Round1Data<G>>] {
         self.received_round1_data()
     }
 
-    /// Get the received round 2 data so far.
+    /// Get the round 2 data received so far.
     #[deprecated(since = "0.6.0", note = "use `received_round2_data` instead")]
     pub fn get_received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>] {
         self.received_round2_data()
     }
 
-    /// Receive data from another participant
+    /// Receive data from another participant.
     pub fn receive(&mut self, data: &[u8]) -> DkgResult<()> {
         let (&round, payload) = data
             .split_first()
@@ -538,7 +540,7 @@ where
         }
     }
 
-    /// Run the next step in the protocol
+    /// Run the next step in the protocol.
     pub fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         match self.round {
             Round::One => self.round1(),
@@ -610,7 +612,7 @@ where
     }
 }
 
-/// Secret Participant Implementation
+/// The secret participant implementation.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct SecretParticipantImpl<G>(PhantomData<G>);
 
@@ -632,7 +634,7 @@ where
     }
 }
 
-/// Refresh Participant Implementation
+/// The refresh participant implementation.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct RefreshParticipantImpl<G>(PhantomData<G>);
 
@@ -654,7 +656,7 @@ where
     }
 }
 
-/// A trait to allow for dynamic dispatch of the participant
+/// A trait that enables dynamic dispatch over participants.
 pub trait AnyParticipant<G>: Send + Sync + Debug
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
@@ -680,19 +682,19 @@ where
     fn all_participant_ids(&self) -> &[IdentifierPrimeField<G::Scalar>];
     /// The Feldman verifiers.
     fn feldman_verifiers(&self) -> &[ShareVerifierGroup<G>];
-    /// The received round 1 data so far.
+    /// The round 1 data received so far.
     fn received_round1_data(&self) -> &[Option<Round1Data<G>>];
-    /// The received round 2 data so far.
+    /// The round 2 data received so far.
     fn received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>];
     /// The verifying share.
     fn verifying_share(&self) -> G;
     /// The final transcript hash.
     fn final_transcript_hash(&self) -> [u8; 32];
-    /// Check if the participant is completed
+    /// Return whether the participant has completed the protocol.
     fn completed(&self) -> bool;
-    /// Receive data from another participant
+    /// Receive data from another participant.
     fn receive(&mut self, data: &[u8]) -> DkgResult<()>;
-    /// Run the next round in the protocol after receiving data from other participants
+    /// Run the next round after receiving data from other participants.
     fn run(&mut self) -> DkgResult<RoundOutputGenerator<G>>;
     /// Advance the protocol and produce opaque, transport-aware messages.
     fn advance(&mut self) -> DkgResult<AdvanceResult<G::Scalar>>;
@@ -717,7 +719,7 @@ where
         self.threshold()
     }
 
-    /// Get the limit.
+    /// Get the participant limit.
     #[deprecated(since = "0.6.0", note = "use `limit` instead")]
     fn get_limit(&self) -> usize {
         self.limit()
@@ -759,13 +761,13 @@ where
         self.feldman_verifiers().to_vec()
     }
 
-    /// Get the received round 1 data so far.
+    /// Get the round 1 data received so far.
     #[deprecated(since = "0.6.0", note = "use `received_round1_data` instead")]
     fn get_received_round1_data(&self) -> &[Option<Round1Data<G>>] {
         self.received_round1_data()
     }
 
-    /// Get the received round 2 data so far.
+    /// Get the round 2 data received so far.
     #[deprecated(since = "0.6.0", note = "use `received_round2_data` instead")]
     fn get_received_round2_data(&self) -> &[Option<Round2Data<G::Scalar>>] {
         self.received_round2_data()

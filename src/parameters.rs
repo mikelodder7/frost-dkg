@@ -7,8 +7,8 @@ use std::num::NonZeroUsize;
 use vsss_rs::{IdentifierPrimeField, ParticipantIdGenerator, ParticipantIdGeneratorCollection};
 
 /// The parameters used by the DKG participants.
-/// This must be the same for all of them otherwise the protocol
-/// will abort.
+/// These parameters must be the same for every participant; otherwise, the
+/// protocol will abort.
 #[derive(Debug, Clone)]
 pub struct Parameters<'a, G>
 where
@@ -101,29 +101,29 @@ where
         Ok(())
     }
 
-    /// The threshold parameter
+    /// The threshold parameter.
     pub fn threshold(&self) -> usize {
         self.threshold
     }
 
-    /// The limit parameter
+    /// The participant limit.
     pub fn limit(&self) -> usize {
         self.limit
     }
 
-    /// Get the message generator
+    /// Get the message generator.
     pub fn message_generator(&self) -> G {
         self.message_generator
     }
 
-    /// Get the participant number generators.
+    /// Get the participant ID generators.
     pub fn participant_number_generators(
         &self,
     ) -> &[ParticipantIdGenerator<'a, IdentifierPrimeField<G::Scalar>>] {
         &self.participant_number_generators
     }
 
-    /// Get the participant number generators.
+    /// Get the participant ID generators.
     #[deprecated(since = "0.6.0", note = "use `participant_number_generators` instead")]
     pub fn participant_number_generator(
         &self,

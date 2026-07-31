@@ -24,7 +24,7 @@ pub enum Error {
     /// Error during a round of the DKG protocol.
     #[error("round error: {0}")]
     Round(String),
-    /// Publicly Verifiable Secret Sharing Verification Error
+    /// Publicly verifiable secret sharing verification error.
     #[error("publicly verifiable secret sharing error: {0}")]
     Pvss(String),
 }

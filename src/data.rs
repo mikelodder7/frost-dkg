@@ -8,16 +8,16 @@ use std::fmt::{self, Display, Formatter};
 use std::sync::Arc;
 use vsss_rs::{IdentifierPrimeField, ShareVerifierGroup};
 
-/// Valid rounds
+/// Valid protocol rounds.
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Round {
-    /// First round
+    /// First round.
     One,
-    /// Second round
+    /// Second round.
     Two,
-    /// Third round
+    /// Third round.
     Three,
-    /// Fourth round
+    /// Fourth round.
     Four,
 }
 
@@ -65,13 +65,13 @@ macro_rules! impl_round_to_int {
 
 impl_round_to_int!(u8, u16, u32, u128, usize);
 
-/// The participant type
+/// The participant type.
 #[derive(Debug, Copy, Clone, Default, Deserialize, Serialize)]
 pub enum ParticipantType {
-    /// Secret participant
+    /// A participant that contributes a secret.
     #[default]
     Secret,
-    /// Refresh participant
+    /// A participant that refreshes an existing sharing.
     Refresh,
 }
 
@@ -104,7 +104,7 @@ macro_rules! impl_participant_to_int {
 
 impl_participant_to_int!(u8, u16, u32, u128, usize);
 
-/// The schnorr signature
+/// A Schnorr signature.
 #[derive(Debug, Default, Copy, Clone, Deserialize, Serialize)]
 pub struct Signature<G: Group<Scalar: ScalarHash> + GroupEncoding + Default> {
     #[serde(with = "group")]
@@ -113,18 +113,18 @@ pub struct Signature<G: Group<Scalar: ScalarHash> + GroupEncoding + Default> {
     pub(crate) s: G::Scalar,
 }
 
-/// The round output for a participant
+/// The output of a protocol round for one participant.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ParticipantRoundOutput<F: ScalarHash> {
-    /// The participant ordinal to where the data should be sent
+    /// The recipient's ordinal index.
     pub dst_ordinal: usize,
-    /// The participant ID to where the data should be sent
+    /// The recipient's participant ID.
     #[serde(bound(
         serialize = "IdentifierPrimeField<F>: Serialize",
         deserialize = "IdentifierPrimeField<F>: Deserialize<'de>"
     ))]
     pub dst_id: IdentifierPrimeField<F>,
-    /// The data to send
+    /// The data to send.
     pub data: WireMessage,
 }
 
@@ -132,7 +132,7 @@ impl<F> ParticipantRoundOutput<F>
 where
     F: ScalarHash,
 {
-    /// Create a new participant round output
+    /// Create a participant round output.
     pub fn new(dst_ordinal: usize, dst_id: IdentifierPrimeField<F>, data: WireMessage) -> Self {
         Self {
             dst_ordinal,
@@ -379,18 +379,18 @@ pub enum AdvanceResult<F: ScalarHash> {
     Complete,
 }
 
-/// The round output generator
+/// A protocol round's output generator.
 #[derive(Debug, Clone)]
 pub enum RoundOutputGenerator<G>
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// The round 1 output generator
+    /// The round 1 output generator.
     Round1(Round1OutputGenerator<G>),
-    /// The round 2 output generator
+    /// The round 2 output generator.
     Round2(Round2OutputGenerator<G>),
-    /// The round 3 output generator
+    /// The round 3 output generator.
     Round3,
 }
 
@@ -459,9 +459,9 @@ where
         }
     }
 
-    /// Iterate over the data to send to other participants
-    /// The output is data that the caller sends the data to participant
-    /// at ordinal index with id.
+    /// Iterate over the data to send to other participants.
+    ///
+    /// Each output identifies the recipient by ordinal index and participant ID.
     pub fn iter(&self) -> DkgResult<std::vec::IntoIter<ParticipantRoundOutput<G::Scalar>>> {
         let outputs = match self {
             Self::Round1(data) => {
@@ -515,56 +515,56 @@ where
     }
 }
 
-/// The output generator for round 0
+/// The output generator for round 1.
 #[derive(Debug, Clone)]
 pub struct Round1OutputGenerator<G>
 where
     G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// The participant IDs to send to
+    /// The recipient participant IDs.
     pub(crate) participant_ids: Vec<IdentifierPrimeField<G::Scalar>>,
-    /// The sender's participant type
+    /// The sender's participant type.
     pub(crate) sender_type: ParticipantType,
-    /// The sender's ordinal index
+    /// The sender's ordinal index.
     pub(crate) sender_ordinal: usize,
-    /// The sender's ID
+    /// The sender's ID.
     pub(crate) sender_id: IdentifierPrimeField<G::Scalar>,
-    /// The feldman verifier set
+    /// The Feldman verifier set.
     pub(crate) feldman_commitments: Vec<ShareVerifierGroup<G>>,
-    /// The verifying share
+    /// The verifying share.
     pub(crate) verifying_share: G,
-    /// The schnorr signature
+    /// The Schnorr signature.
     pub(crate) signature: Signature<G>,
 }
 
-/// The round 1 data
+/// The round 1 data.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Round1Data<G>
 where
     G: SumOfProducts + GroupEncoding + Default + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// The sender's ordinal index
+    /// The sender's ordinal index.
     pub(crate) sender_ordinal: usize,
-    /// The sender's ID
+    /// The sender's ID.
     #[serde(bound(
         serialize = "IdentifierPrimeField<G::Scalar>: Serialize",
         deserialize = "IdentifierPrimeField<G::Scalar>: Deserialize<'de>"
     ))]
     pub(crate) sender_id: IdentifierPrimeField<G::Scalar>,
-    /// The sender's participant type
+    /// The sender's participant type.
     pub(crate) sender_type: ParticipantType,
-    /// The feldman commitments
+    /// The Feldman commitments.
     #[serde(bound(
         serialize = "ShareVerifierGroup<G>: Serialize",
         deserialize = "ShareVerifierGroup<G>: Deserialize<'de>"
     ))]
     pub(crate) feldman_commitments: Vec<ShareVerifierGroup<G>>,
-    /// The verifying share
+    /// The verifying share.
     #[serde(with = "group")]
     pub(crate) verifying_share: G,
-    /// The schnorr signature
+    /// The Schnorr signature.
     #[serde(bound(
         serialize = "Signature<G>: Serialize",
         deserialize = "Signature<G>: Deserialize<'de>"
@@ -596,55 +596,55 @@ where
         }
     }
 
-    /// Get the sender's ordinal index during the DKG
+    /// Get the sender's ordinal index in the DKG.
     pub fn sender_ordinal(&self) -> usize {
         self.sender_ordinal
     }
 
-    /// Get the sender's ID during the DKG
+    /// Get the sender's ID in the DKG.
     pub fn sender_id(&self) -> IdentifierPrimeField<G::Scalar> {
         self.sender_id
     }
 
-    /// Get the sender's participant type during the DKG
+    /// Get the sender's participant type in the DKG.
     pub fn sender_type(&self) -> ParticipantType {
         self.sender_type
     }
 
-    /// Get the feldman commitments used by the DKG
+    /// Get the Feldman commitments used by the DKG.
     pub fn feldman_commitments(&self) -> &[ShareVerifierGroup<G>] {
         &self.feldman_commitments
     }
 
-    /// Get the signature verifying share used by the DKG
+    /// Get the verifying share used to verify the Schnorr signature.
     pub fn verifying_share(&self) -> G {
         self.verifying_share
     }
 
-    /// Get the schnorr signature used by the DKG
+    /// Get the Schnorr signature used by the DKG.
     pub fn signature(&self) -> Signature<G> {
         self.signature
     }
 }
 
-/// The output generator for round 2
+/// The output generator for round 2.
 #[derive(Clone)]
 pub struct Round2OutputGenerator<G>
 where
     G: GroupEncoding + Default + SumOfProducts + ConditionallySelectable,
     G::Scalar: ScalarHash,
 {
-    /// The participant IDs to send to
+    /// The recipient participant IDs.
     pub(crate) participant_ids: Vec<Option<IdentifierPrimeField<G::Scalar>>>,
-    /// The sender's ordinal index
+    /// The sender's ordinal index.
     pub(crate) sender_ordinal: usize,
-    /// The sender's ID
+    /// The sender's ID.
     pub(crate) sender_id: IdentifierPrimeField<G::Scalar>,
-    /// The sender's participant type
+    /// The sender's participant type.
     pub(crate) sender_type: ParticipantType,
-    /// The peer 2 peer data based on the participant ordinal index
+    /// The peer-to-peer data, indexed by participant ordinal.
     pub(crate) secret_shares: Vec<SecretShare<G::Scalar>>,
-    /// The transcript hash
+    /// The transcript hash.
     pub(crate) transcript_hash: [u8; 32],
 }
 
@@ -665,26 +665,26 @@ where
     }
 }
 
-/// The round 2 data
+/// The round 2 data.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct Round2Data<F: ScalarHash> {
-    /// The sender's ordinal index
+    /// The sender's ordinal index.
     pub(crate) sender_ordinal: usize,
-    /// The sender's ID
+    /// The sender's ID.
     #[serde(bound(
         serialize = "IdentifierPrimeField<F>: Serialize",
         deserialize = "IdentifierPrimeField<F>: Deserialize<'de>"
     ))]
     pub(crate) sender_id: IdentifierPrimeField<F>,
-    /// The sender's participant type
+    /// The sender's participant type.
     pub(crate) sender_type: ParticipantType,
-    /// The peer 2 peer data
+    /// The peer-to-peer secret share.
     #[serde(bound(
         serialize = "SecretShare<F>: Serialize",
         deserialize = "SecretShare<F>: Deserialize<'de>"
     ))]
     pub(crate) secret_share: SecretShare<F>,
-    /// The transcript of all messages received
+    /// The hash of the transcript containing all received messages.
     pub(crate) transcript_hash: [u8; 32],
 }
 
@@ -710,27 +710,27 @@ impl<F: ScalarHash> Round2Data<F> {
         transcript.append_message(b"transcript_hash", &self.transcript_hash);
     }
 
-    /// Get the sender's ordinal index during the DKG
+    /// Get the sender's ordinal index in the DKG.
     pub fn sender_ordinal(&self) -> usize {
         self.sender_ordinal
     }
 
-    /// Get the sender's ID during the DKG
+    /// Get the sender's ID in the DKG.
     pub fn sender_id(&self) -> IdentifierPrimeField<F> {
         self.sender_id
     }
 
-    /// Get the sender's participant type during the DKG
+    /// Get the sender's participant type in the DKG.
     pub fn sender_type(&self) -> ParticipantType {
         self.sender_type
     }
 
-    /// Get the secret share used by the DKG
+    /// Get the secret share used by the DKG.
     pub fn secret_share(&self) -> SecretShare<F> {
         self.secret_share
     }
 
-    /// Get the transcript hash used by the DKG
+    /// Get the transcript hash used by the DKG.
     pub fn transcript_hash(&self) -> [u8; 32] {
         self.transcript_hash
     }

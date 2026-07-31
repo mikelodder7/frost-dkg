@@ -203,7 +203,7 @@ where
 
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 }
 
@@ -284,7 +284,7 @@ where
 
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 }
 
@@ -367,7 +367,7 @@ where
 
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 }
 
@@ -453,7 +453,7 @@ where
     let actual_pk = G::generator() * *new_secret;
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 }
 
@@ -631,7 +631,7 @@ where
         1u8
     );
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret + *new_secret, secret);
 }
 
@@ -647,7 +647,7 @@ where
     five_participants_add_participant::<G>(threshold);
 }
 
-// Previous threshold was 3, new threshold is 5
+// The previous threshold was 3; the new threshold is 5.
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 5)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 5)]
@@ -660,7 +660,7 @@ where
     five_participants_add_participant::<G>(threshold);
 }
 
-// Previous threshold was 3
+// The previous threshold was 3.
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 3)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 3)]
@@ -673,7 +673,7 @@ where
     five_participants_remove_participant::<G>(threshold);
 }
 
-// Previous threshold was 3, new threshold is 2
+// The previous threshold was 3; the new threshold is 2.
 #[rstest]
 #[case::k256(k256::ProjectivePoint::IDENTITY, 2)]
 #[case::p256(p256::ProjectivePoint::IDENTITY, 2)]
@@ -761,7 +761,7 @@ where
         G::generator() * *secret
     );
 
-    // publicly verify secret sharing DKG result
+    // Publicly verify the secret-sharing DKG result.
     for participant in participants.iter() {
         let round1_data: Vec<Round1Data<G>> = participant
             .received_round1_data()
@@ -789,7 +789,7 @@ where
 {
     let (participants, secret) = five_participants_init::<G>();
 
-    // Next epoch
+    // Next epoch.
     const LIMIT: usize = 5;
     const INCREMENT: usize = 2;
 
@@ -898,7 +898,7 @@ where
 
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 }
 
@@ -909,7 +909,7 @@ where
 {
     let (participants, secret) = five_participants_init::<G>();
 
-    // Next epoch
+    // Next epoch.
     const LIMIT: usize = 3;
 
     let threshold = NonZeroUsize::new(threshold).unwrap();
@@ -977,7 +977,7 @@ where
 
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 }
 
@@ -988,7 +988,7 @@ where
 {
     let (participants, secret) = five_participants_init::<G>();
 
-    // Next epoch
+    // Next epoch.
     const LIMIT: usize = 3;
     const INCREMENT: usize = 1;
 
@@ -1063,7 +1063,7 @@ where
 
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 }
 
@@ -1074,7 +1074,7 @@ where
 {
     let (participants, secret) = five_participants_init::<G>();
 
-    // Next epoch
+    // Next epoch.
     const LIMIT: usize = 3;
     const INCREMENT: usize = 3;
 
@@ -1163,7 +1163,7 @@ where
     let actual_pk = G::generator() * *new_secret;
     assert_eq!(participants[0].public_key().unwrap(), actual_pk);
 
-    // Old shared secret remains unchanged
+    // The old shared secret remains unchanged.
     assert_eq!(secret, *new_secret);
 
     let transcript_hash = participants[0].final_transcript_hash();

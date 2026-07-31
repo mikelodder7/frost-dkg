@@ -20,7 +20,7 @@ where
     pub(crate) fn round2(&mut self) -> DkgResult<RoundOutputGenerator<G>> {
         if !self.round2_ready() {
             return Err(Error::Round(format!(
-                "Round 2 is not ready, haven't received enough data from other participants. Need {} more",
+                "Round 2 is not ready: not enough data has been received from other participants; need {} more",
                 self.threshold - self.received_round1_data.iter().flatten().count()
             )));
         }
@@ -56,7 +56,7 @@ where
     pub(crate) fn receive_round2data(&mut self, data: Round2Data<G::Scalar>) -> DkgResult<()> {
         if self.round > Round::Three {
             return Err(Error::Round(format!(
-                "Round {}: Invalid round payload received",
+                "Round {}: invalid round payload received",
                 Round::Two
             )));
         }
@@ -67,7 +67,7 @@ where
             .is_some_and(Option::is_some)
         {
             return Err(Error::Round(format!(
-                "Round {}: Not a valid participant",
+                "Round {}: sender is not a valid participant",
                 Round::Two
             )));
         }
@@ -77,7 +77,7 @@ where
             .is_some_and(Option::is_some)
         {
             return Err(Error::Round(format!(
-                "Round {}: Sender has already sent data",
+                "Round {}: sender has already sent data",
                 Round::Two
             )));
         }
@@ -87,13 +87,13 @@ where
             .and_then(Option::as_ref)
             .ok_or_else(|| {
                 Error::Round(format!(
-                    "Round {}: Self doesn't have round 2 data",
+                    "Round {}: participant does not have its own round 2 data",
                     Round::Two
                 ))
             })?;
         if data.transcript_hash != self_data.transcript_hash {
             return Err(Error::Round(format!(
-                "Round {}: Transcript hash does not match",
+                "Round {}: transcript hash does not match",
                 Round::Two
             )));
         }
@@ -104,12 +104,12 @@ where
             .and_then(Option::as_ref)
             .ok_or_else(|| {
                 Error::Round(format!(
-                    "Round {}: Sender has not sent round 1 data",
+                    "Round {}: sender has not sent round 1 data",
                     Round::Two
                 ))
             })?;
 
-        // verify the share
+        // Verify the share.
         let rhs = <G as SumOfProducts>::sum_of_products_iter(
             self.powers_of_i
                 .iter()
